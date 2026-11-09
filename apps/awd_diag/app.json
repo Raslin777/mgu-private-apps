@@ -1,0 +1,30 @@
+{
+  "id": "awd_diag",
+  "title": "AWD Diagnostic",
+  "description": "Read AWD status and run the temporary VIP_G05 test in PAD on the G12 750i xDrive",
+  "version": "0.1.0",
+  "vendor": "custom",
+  "loggingId": "OAZD",
+  "iconGlyph": "engine",
+  "signals": {
+    "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
+      "_instances": "SystemFunctionsInternalTasuInst1",
+      "_methods": ["sendTasuRequest"],
+      "_broadcasts": ["sendTasuResponse"]
+    },
+    "de.bmw.infotainment.vehicle.Vehicle2": {"statusCarSpeed2": "r"},
+    "de.bmw.infotainment.vehicle.CDS": {"statusEngineSpeed2": "r"}
+  },
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "menu",
+      "items": [
+        ["button", "READ", "Read AWD status"],
+        ["button", "TEST", "Arm PAD test"],
+        ["text", "STATUS", "Choose Read AWD status"],
+        ["text", "DETAIL", "Park, engine off, PAD mode"]
+      ]
+    }
+  ]
+}
