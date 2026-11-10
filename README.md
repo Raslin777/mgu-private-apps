@@ -1,7 +1,8 @@
 # Private MGU app source
 
 ## AWD Diagnostic
-ALPHA USE AT YIUR OWN RISK
+ALPHA USE AT YOUR OWN RISK
+This will temporarily put your car into RWD mode until you turn off the car.
 
 An iDrive 7 app for the temporary AWD diagnostic on the 2020 750i xDrive (G12) with the IB_G05 and VIP_G05 ECU pair.
 
