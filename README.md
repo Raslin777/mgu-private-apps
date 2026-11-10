@@ -1,6 +1,7 @@
 # Private MGU app source
 
 ## AWD Diagnostic
+ALPHA USE AT YIUR OWN RISK
 
 An iDrive 7 app for the temporary AWD diagnostic on the 2020 750i xDrive (G12) with the IB_G05 and VIP_G05 ECU pair.
 
