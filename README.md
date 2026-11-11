@@ -25,6 +25,29 @@ Use this repository as a **Releases** source in MGU Store.
 
 To publish an app, attach its installable `<app-id>@<version>.tgz` or `<app-id>@<version>.mgu` to a published GitHub release. The Store skips draft and prerelease entries. The package's app ID and version must match its filename.
 
-Keep tokens, SSH keys, and extracted BMW SDK or firmware files out of the repository and its release assets.
+Keep API tokens, other SSH keys, and extracted BMW SDK or firmware files out of the repository and release assets. The AI Terminal release below intentionally bundles its root RSA key at the owner's explicit request.
 
 See the [MGU Store publishing guide](https://github.com/cauliflowermossgrape/mgu-store/blob/main/docs/PUBLISHING.md) for package layout.
+
+## AI Terminal 0.2.1
+
+An ID7 terminal for direct Claude/OpenAI API requests, workspace files and
+commands approved on the head-unit screen. Optional root access uses the
+bundled RSA SSH key or the separate `mgu-ai-root` helper.
+
+**Offline prototype; not car-tested. ID8 is not supported by this build.**
+This version uses API keys and has no QR pairing or account sign-in.
+
+Install from [AI Terminal 0.2.1 releases](https://github.com/Raslin777/mgu-private-apps/releases/tag/ai-terminal-v0.2.1)
+through the Store's **Releases** source. The app archive **includes the root RSA
+key at the owner's explicit request**; anyone downloading it can extract the
+key. The source placeholder does not contain it. API credentials and helper
+tokens are provisioned separately.
+
+- [Setup, root access and build instructions](docs/AI_TERMINAL.md)
+- [Review findings and release notes](REVIEW_NOTES.md)
+- [Offline validation and remaining limits](VALIDATION.md)
+
+Run `npm test` for 49 offline tests. Build with
+`python tools/build.py --root-key <path-to-private-key>`, or `--no-root-key`.
+Build the optional helper with `python tools/package-root.py`.

@@ -1,0 +1,17 @@
+{
+  "id": "mgu_ai_terminal",
+  "title": "AI Terminal",
+  "description": "Ask questions, create files and run approved commands on the head unit with your own Claude or OpenAI API key",
+  "version": "0.2.1",
+  "vendor": "custom",
+  "loggingId": "AITM",
+  "iconGlyph": "AI",
+  "screens": [
+    { "name": "MAIN", "kind": "canvas", "title": "AI Terminal",
+      "buttons": [["BTN_ASK", "Ask"], ["BTN_SETUP", "Reload"], ["BTN_MORE", "More"], ["BTN_STOP", "Stop"]] },
+    { "name": "OPTIONS", "kind": "menu", "title": "AI Terminal",
+      "items": [["button", "OPT_BACK", "Back to terminal"], ["button", "OPT_OLDER", "Earlier output"], ["button", "OPT_NEWER", "Later output"], ["button", "OPT_NEW", "New conversation"], ["button", "OPT_PROVIDER", "Switch Claude / OpenAI"]] }
+  ],
+  "signals": {},
+  "settings": []
+}

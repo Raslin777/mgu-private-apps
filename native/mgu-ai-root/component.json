@@ -1,0 +1,22 @@
+{
+  "id": "mgu-ai-root",
+  "kind": "tool",
+  "version": "0.1.1",
+  "title": "AI Terminal root helper",
+  "description": "Runs commands as root for AI Terminal, only after the owner approves each one on screen. Not car-tested.",
+  "mguHmi": ["ID7"],
+  "optional": true,
+  "uninstallable": true,
+  "files": [
+    { "path": "helper.js", "from": "helper.js", "mode": "0644" },
+    { "path": "safety.js", "from": "../../apps/mgu_ai_terminal/safety.js", "mode": "0644" },
+    { "path": "provision.sh", "from": "provision.sh", "mode": "0755" }
+  ],
+  "units": [
+    { "name": "mgu-ai-root.socket", "from": "systemd/mgu-ai-root.socket" },
+    { "name": "mgu-ai-root.service", "from": "systemd/mgu-ai-root.service" }
+  ],
+  "enable": [{ "unit": "mgu-ai-root.socket", "target": "sockets.target" }],
+  "recmgr": ["mgu-ai-root"],
+  "restart": []
+}

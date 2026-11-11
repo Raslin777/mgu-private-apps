@@ -1,0 +1,13 @@
+[Unit]
+Description=AI Terminal root helper: runs owner-approved commands as root
+Requires=mgu-ai-root.socket
+After=mgu-ai-root.socket
+RequiresMountsFor=/var/opt
+
+[Service]
+# Started by the first connection to mgu-ai-root.socket; no process runs before that.
+ExecStart=/usr/bin/node /var/opt/mgu-ai-root/current/helper.js
+Restart=on-failure
+RestartSec=5
+Nice=10
+StandardOutput=journal

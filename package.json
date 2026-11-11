@@ -1,0 +1,13 @@
+{
+  "name": "mgu-ai-terminal",
+  "version": "0.2.1",
+  "private": true,
+  "description": "Native MGU AI terminal calling the Claude or OpenAI API directly",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "build": "python tools/build.py",
+    "preview": "node tools/preview.cjs",
+    "build:root": "python tools/package-root.py",
+    "catalog": "python tools/catalog.py"
+  }
+}
