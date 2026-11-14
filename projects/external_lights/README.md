@@ -1,7 +1,7 @@
 # External Lights for MGU
 
 A head-unit app (iDrive 7) that plays light shows on the car's **exterior lamps** and can flash each lamp on its
-own, in the manner of light-show apps such as Bimmer Light. It runs only while the car stands.
+own, in the manner of light-show. It runs only while the car stands.
 
 **Not car-tested, and the request it sends has never been sent to a car by this project.** It was found in
 ISTA's description of the body controller and checked on a PC against a simulated car. Read "Before the first
