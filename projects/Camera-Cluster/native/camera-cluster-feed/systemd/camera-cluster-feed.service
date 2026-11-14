@@ -1,0 +1,26 @@
+[Unit]
+Description=Camera Cluster feed: the camera stream, decoded for the cluster renderer
+RequiresMountsFor=/var/opt
+Requires=camera-cluster-feed.socket
+# Cluster renderer draws the picture; its socket starts it at the first connection.
+Wants=cluster-render.socket
+# Ordering only: the media bus the camera stream is on. Never a requirement.
+After=local-fs.target camera-cluster-feed.socket cluster-render.socket ufipc_daemon.service avbstreamhandler.service
+
+[Service]
+# Not root. hmi_5000 is the user Waze on cluster's render runs as on iDrive 7:
+# it can open the GPU decoder (video group), and with these two groups the media
+# bus (mgu_ufipc) and Cluster renderer's socket (tm_oap_app).
+# NOT VERIFIED for the camera stream: if the log says the stream cannot be
+# joined, see README "If the stream cannot be joined".
+User=hmi_5000
+Group=hmi_5000
+SupplementaryGroups=mgu_ufipc tm_oap_app
+RuntimeDirectory=camera-cluster-feed
+RuntimeDirectoryMode=0755
+ExecStartPre=-+/bin/sh -c 'mkdir -p /var/opt/camera-cluster-feed/log /var/opt/camera-cluster-feed/state && chown hmi_5000:hmi_5000 /var/opt/camera-cluster-feed/log /var/opt/camera-cluster-feed/state'
+ExecStart=/var/opt/camera-cluster-feed/current/waze-on-cluster -c /var/opt/camera-cluster-feed/current/camera-feed.conf
+Restart=on-failure
+RestartSec=5
+# The car's system.conf sends service output nowhere by default.
+StandardOutput=journal

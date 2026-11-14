@@ -1,0 +1,10 @@
+.cache/
+dist/
+preview/
+node_modules/
+*.log
+.local/
+# Extracted head-unit material and credentials never belong in a repository.
+assets/
+*.pem
+*.key

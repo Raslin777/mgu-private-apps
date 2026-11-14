@@ -1,0 +1,35 @@
+{
+  "id": "camera-cluster-feed",
+  "kind": "tool",
+  "version": "0.1.0",
+  "title": "Camera Cluster feed",
+  "description": "Decodes the car's camera stream for the Camera Cluster app and hands the picture to Cluster renderer. Runs only after the app is opened. Not car-tested.",
+  "license": "GPL-3.0-or-later",
+  "mguHmi": ["ID7"],
+  "optional": true,
+  "uninstallable": true,
+  "requires": { "cluster-render": "0.5.3" },
+  "upstream": {
+    "repository": "https://github.com/robertnisipeanu/idrive-apps",
+    "tag": "waze-on-cluster@0.9.14",
+    "commit": "f7a678b27693c88a12d2ed4f18ac4652f005bffd",
+    "asset": "waze-on-cluster@0.9.14.tgz",
+    "size": 2383309,
+    "sha256": "05118ea14c2c2d4b7217d9652c9bff2a5e57f8b8bbd69c24c9bd87d599c460d8",
+    "take": [
+      { "path": "waze-on-cluster", "from": "files/waze-on-cluster", "mode": "0755" },
+      { "path": "LICENSE", "from": "files/LICENSE", "mode": "0644" }
+    ]
+  },
+  "files": [
+    { "path": "camera-feed.conf", "from": "camera-feed.conf", "mode": "0644" },
+    { "path": "SOURCE.md", "from": "SOURCE.md", "mode": "0644" }
+  ],
+  "units": [
+    { "name": "camera-cluster-feed.socket", "from": "systemd/camera-cluster-feed.socket" },
+    { "name": "camera-cluster-feed.service", "from": "systemd/camera-cluster-feed.service" }
+  ],
+  "enable": [{ "unit": "camera-cluster-feed.socket", "target": "sockets.target" }],
+  "recmgr": ["camera-cluster-feed"],
+  "restart": ["camera-cluster-feed.service"]
+}

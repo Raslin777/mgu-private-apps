@@ -54,3 +54,24 @@ Run `npm test` for 57 offline tests. Both Node 8 compatibility checks pass,
 including phone pairing over real loopback HTTP. Build with
 `python tools/build.py --root-key <path-to-private-key>`, or `--no-root-key`.
 Build the optional helper with `python tools/package-root.py`.
+
+## Additional custom apps — November 14, 2026
+
+| App | Source and setup | Version |
+|---|---|---|
+| Better Lighting | [Ambient colours and effects](projects/BettetLighting/README.md) | 0.1.0 |
+| Camera Cluster | [Front/rear camera in the cluster](projects/Camera-Cluster/README.md) | 0.1.0 |
+| External Lights | [Exterior light shows and lamp tests](projects/external_lights/README.md) | 0.1.0 |
+
+[Download the reviewed packages](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14).
+Refresh this repository's **Releases** source in MGU Store. Camera Cluster
+requires its feed tool and upstream `cluster-render >= 0.5.3`.
+All three are offline prototypes, not verified on a car.
+
+Each project keeps its own package.json, tests, native tools and builder under
+projects/ to avoid conflicting filenames. For example, run
+`python projects/BettetLighting/tools/build.py` to build Better Lighting;
+run `npm test` from the corresponding project directory.
+
+[Review findings and validation](docs/CUSTOM_APPS_REVIEW_2026-11-14.md).
+AI Terminal and AWD Diagnostic remain available. The emulator is excluded.

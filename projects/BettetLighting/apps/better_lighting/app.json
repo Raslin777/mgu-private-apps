@@ -1,0 +1,121 @@
+{
+  "id": "better_lighting",
+  "title": "Better Lighting",
+  "description": "Any colour on the ambient light, breathe, pulse and rainbow, and a look for each driving mode. Faster light driver. Not car-tested.",
+  "version": "0.1.0",
+  "vendor": "custom",
+  "loggingId": "BLGT",
+  "iconGlyph": "ambient",
+  "autostart": true,
+  "signals": {
+    "de.bmw.infotainment.misc.ComfortFunctionIuK": {
+      "ambientLightInteriorColour": "w",
+      "statusAmbientLightInteriorColour": "rs"
+    },
+    "de.bmw.infotainment.drivingexcitement.FES": {
+      "_optional": "the driving mode: colours by mode",
+      "statusFESVehicleDynamicSwitchHMI": "rs"
+    },
+    "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
+      "_instances": "SystemFunctionsInternalTasuInst1",
+      "_methods": [
+        "sendTasuRequest"
+      ],
+      "_broadcasts": [
+        "sendTasuResponse"
+      ]
+    },
+    "de.bmw.infotainment.vehicle.Vehicle": {
+      "_optional": "day or night: dimmer at night",
+      "statusDayNightChangeOver": "rs"
+    }
+  },
+  "screens": [
+    {
+      "name": "MAIN",
+      "kind": "canvas",
+      "title": "Better Lighting",
+      "buttons": [
+        [
+          "BTN_SETTINGS",
+          "Settings"
+        ]
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "key": "carKind",
+      "label": "Car type",
+      "type": "choice",
+      "default": "ice",
+      "hidden": true,
+      "options": [
+        [
+          "ice",
+          "Petrol or diesel"
+        ],
+        [
+          "hybrid",
+          "Plug-in hybrid"
+        ]
+      ]
+    },
+    {
+      "key": "follow",
+      "label": "Look by driving mode",
+      "type": "bool",
+      "default": true,
+      "hidden": true
+    },
+    {
+      "key": "welcome",
+      "label": "Welcome sweep at start",
+      "type": "bool",
+      "default": false,
+      "hidden": true
+    },
+    {
+      "key": "sportPulse",
+      "label": "Sport pulse",
+      "type": "bool",
+      "default": false,
+      "hidden": true
+    },
+    {
+      "key": "nightDim",
+      "label": "Dimmer at night",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "keep",
+      "label": "My colour back at each start",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "flashAlerts",
+      "label": "Redline shift flash",
+      "type": "bool",
+      "default": true,
+      "hidden": true
+    },
+    {
+      "key": "drive",
+      "label": "Steering wheel",
+      "type": "choice",
+      "default": "lhd",
+      "options": [
+        [
+          "lhd",
+          "Left"
+        ],
+        [
+          "rhd",
+          "Right"
+        ]
+      ]
+    }
+  ]
+}

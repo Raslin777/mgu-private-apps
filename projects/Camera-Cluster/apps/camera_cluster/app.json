@@ -1,0 +1,18 @@
+{
+  "id": "camera_cluster",
+  "title": "Camera Cluster",
+  "description": "Shows the front or the rear camera in the instrument cluster's centre map area. Needs the Camera Cluster feed tool and Cluster renderer. Not car-tested.",
+  "version": "0.1.0",
+  "vendor": "custom",
+  "loggingId": "CAMC",
+  "iconGlyph": "CC",
+  "screens": [
+    { "name": "MAIN", "kind": "canvas", "title": "Camera Cluster",
+      "buttons": [["BTN_FRONT", "Front"], ["BTN_REAR", "Rear"], ["BTN_OFF", "Off"]] }
+  ],
+  "signals": {
+    "de.bmw.infotainment.video.cameraproxy.ICAM2Proxy": "*",
+    "de.bmw.infotainment.video.cameraproxy.CameraProxy": "*"
+  },
+  "settings": []
+}

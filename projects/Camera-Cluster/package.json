@@ -1,0 +1,13 @@
+{
+  "name": "mgu-camera-cluster",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Front or rear camera in the BMW MGU (iDrive 7) instrument cluster's centre map area",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "build": "python tools/build.py",
+    "build:feed": "python tools/package-feed.py",
+    "preview": "node tools/preview.cjs",
+    "catalog": "python tools/catalog.py"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "mgu-better-lighting",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Faster ambient light app for the BMW MGU (iDrive 7): any colour, breathe, pulse and rainbow",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "check:node8": "node tools/check-node8.cjs",
+    "build": "python tools/build.py",
+    "catalog": "python tools/catalog.py",
+    "preview": "node tools/preview.cjs"
+  }
+}
