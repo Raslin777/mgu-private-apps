@@ -1,7 +1,7 @@
 # AI Terminal for MGU
 
-A native head-unit terminal: type a request on the iDrive keyboard and an AI
-model answers, creates files, or runs commands you approve on screen. The app
+A native head-unit terminal: type a request on your phone or the iDrive
+keyboard and an AI model answers, creates files, or runs commands you approve on screen. The app
 calls the model API directly from the head unit's own Node 8. No separate AI
 runtime or external relay server is needed.
 
@@ -9,14 +9,15 @@ runtime or external relay server is needed.
 
 | | |
 |---|---|
-| App package | `mgu_ai_terminal@0.2.1.tgz` |
+| App package | `mgu_ai_terminal@0.3.0.tgz` |
 | Root helper (optional tool) | `mgu-ai-root@0.1.1.tgz` |
 | Providers | Claude (Anthropic API) or OpenAI, switchable on screen |
-| Setup | Your own API key. This version does not implement QR setup or ChatGPT/Claude account sign-in. |
+| Setup | Scan a QR code on the car screen and enter your own API key on your phone. No ChatGPT/Claude account sign-in. |
 
 ## How it works
 
-1. **Ask** opens the native keyboard. The request is checked, then sent to the
+1. Type a request on the linked phone page, or choose **Ask** for the native
+   keyboard. Either way the request is checked, then sent to the
    chosen provider with three tools: `run_command`, `read_file`, `write_file`.
 2. Files in the app's `workspace/` folder are read and written without asking.
 3. **Every command is shown for approval.** Ask becomes Approve and Reload
@@ -69,6 +70,42 @@ the approval screen is the only thing between the model and the head unit.
 - The request filter is keyword based. It stops obvious requests, not every
   phrasing; the command rules and your approval are what count.
 
+## Phone link
+
+The head unit serves a small web page itself; there is no outside server.
+
+1. With no API key saved, the app shows a QR code, an address and a 6-digit
+   code. Later, **More > Phone link on / off** shows it again.
+2. Join the car's Wi-Fi hotspot on the phone and scan the QR code. The code is
+   carried in the scanned address, so pairing needs no typing; opening the
+   address by hand asks for the code.
+3. First time: choose Claude or OpenAI, paste the API key, choose whether to
+   allow root commands, and save. The app is then ready.
+4. After that the same page is where you type requests, read the output, stop
+   a request, start a new conversation or change settings.
+
+What the phone cannot do: **approve a command.** The page shows the command
+that is waiting, but Approve and Deny exist only on the car screen.
+
+Protections: nothing but the page itself is served before pairing; one phone
+at a time; five wrong codes lock pairing for 30 s and change the code; a
+paired phone is forgotten when the link is turned off or the app restarts;
+requests must be addressed to the head unit by IP, be JSON and under 16 KB;
+saved keys are never sent back to the phone.
+
+Limits you should know:
+- **The page is plain HTTP on the car's Wi-Fi.** Another device on that
+  hotspot could read the API key while you save it, and the session while you
+  use it. Use it on a hotspot only you are on.
+- The server listens on port 8377 on every network interface of the head unit
+  while the link is on, not only the hotspot.
+- **Not verified on a car:** whether the head unit's firewall lets a phone on
+  the hotspot reach a port opened by an app, and which address the hotspot
+  uses (172.16.222.x is tried first). If the phone cannot open the page, use
+  the `provision.sh` fallback below.
+- Leaving the AI Terminal screen on the head unit stops a running request,
+  including one started from the phone.
+
 ## Root access
 
 Root commands reach the head unit one of two ways. Both show every command for
@@ -77,7 +114,7 @@ approval first.
 | | Bundled SSH key (default build) | Root helper (optional tool) |
 |---|---|---|
 | How | The app runs `ssh root@127.0.0.1` with the root key built into the package | A root service behind a socket, with a per-install token |
-| Setup | Answer `y` in `provision.sh`, or set `allowRoot: true` in config | Install `mgu-ai-root`, answer `y` in `provision.sh` |
+| Setup | Tick "Allow root commands" on the phone page | Install `mgu-ai-root`, answer `y` in `provision.sh` |
 | Root-side checks | None: the deny rules run in the app only | Deny rules re-applied as root, audit log |
 | Needs | An SSH client on the head unit (`/usr/bin/ssh`); **not verified** | Store acceptance of the tool; not verified |
 
@@ -89,7 +126,7 @@ package as `javascript/rootkey.js`. The source tree only holds a placeholder.
 When root is enabled the app copies the key to `<data directory>/root_key` (mode
 0600). Build without it using `python tools/build.py --no-root-key`.
 
-**The published 0.2.1 package includes the root RSA key, as explicitly requested
+**The published 0.3.0 package includes the root RSA key, as explicitly requested
 by the repository owner.** Anyone downloading it can extract that key and use
 it on units that trust it. `Raslin777/mgu-private-apps` is public. Source keeps
 the placeholder; the original local PEM is unchanged. API keys and root-helper
@@ -103,17 +140,13 @@ for a package without it.
    choose **Check now**, and install `mgu_ai_terminal`. The `mgu-ai-root`
    tool is optional; loopback SSH is available when root is enabled and the
    head unit has a compatible SSH client. Local builds are also in `dist/`.
-2. Open AI Terminal once. It shows "Not set up" and its data directory.
-3. Over SSH as root, run the provisioning script with that directory:
+2. Open AI Terminal. It shows a QR code: scan it with a phone on the car's
+   Wi-Fi hotspot and enter your API key (see Phone link above).
 
-   ```bash
-   sh /var/opt/mgu-ai-root/current/provision.sh <data directory shown on screen>
-   ```
-
-   Without the root helper installed, copy `native/mgu-ai-root/provision.sh`
-   to the head unit and run it the same way. It asks for the provider, the
-   keys (not echoed), the OpenAI model id, and whether to allow root commands.
-4. In the app choose **Reload**.
+Fallback without a phone: over SSH as root, run
+`sh provision.sh <app data directory>` (the script is in
+`native/mgu-ai-root/`, and in `/var/opt/mgu-ai-root/current/` when the root
+helper is installed), then choose **Reload** in the app.
 
 `config.json` (mode 0600, owned by the app user):
 
@@ -136,6 +169,7 @@ Python 3.11+ and Node.js 18+ on the PC; application sources use Node 8 syntax.
 ```powershell
 npm test                              # offline regression tests
 .cache\node8.exe tools\check-node8.cjs  # loads and runs the code under Node 8.16.2
+.cache\node8.exe tools\check-link-node8.cjs  # phone link over real HTTP under Node 8.16.2
 npm run build                         # dist\mgu_ai_terminal@<version>.tgz
 npm run build:root                    # dist\mgu-ai-root@<version>.tgz
 npm run catalog                       # dist\catalog.json
@@ -148,7 +182,8 @@ npm run preview                       # preview\*.png (simulated data)
 | `apps/mgu_ai_terminal/api.js` | HTTPS client and the two provider adapters |
 | `apps/mgu_ai_terminal/agent.js` | the request / tool / approval loop |
 | `apps/mgu_ai_terminal/tools.js` | workspace files, local commands, root-helper client |
-| `apps/mgu_ai_terminal/config.js` | `config.json` loading and provider switch |
+| `apps/mgu_ai_terminal/config.js` | `config.json` loading, saving and provider switch |
+| `apps/mgu_ai_terminal/link.js`, `qrcodegen.js` | phone link: pairing, setup and request page; QR code |
 | `apps/mgu_ai_terminal/main.js`, `view.js`, `speller.js` | screen, buttons, keyboard |
 | `native/mgu-ai-root/` | root helper, systemd units, `provision.sh` |
 

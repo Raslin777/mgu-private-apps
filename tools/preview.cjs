@@ -18,6 +18,8 @@ const states = {
     approval: { status: 'PREVIEW — Action needs approval', lines: [], approvals: [
         { id: 1, root: false, flags: [], reason: 'Read the head-unit operating-system information you asked for', command: 'cat /etc/os-release' }
     ] },
+    'phone-link': { status: 'PREVIEW - Not set up', lines: [], approvals: [], configured: false,
+        link: { url: 'http://172.16.222.97:8377/#000000', shown: 'http://172.16.222.97:8377/', code: '000000', others: [] } },
     'approval-root': { status: 'PREVIEW — Action needs approval', lines: [], approvals: [
         { id: 2, root: true, flags: ['RUNS AS ROOT', 'CHANGES A SERVICE'], reason: 'Restart the uplink so the new Wi-Fi settings apply',
             command: 'systemctl restart mgu-uplink.service' }
@@ -25,7 +27,7 @@ const states = {
 };
 for (const [name, state] of Object.entries(states)) {
     const cv = new Canvas(1600, 520);
-    draw(cv, state, 0);
+    draw(cv, state, 0, state.link || null);
     fs.writeFileSync(path.join(out, name + '.png'), cv.png());
 }
 for (const stale of ['login.png']) fs.rmSync(path.join(out, stale), { force: true });

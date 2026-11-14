@@ -29,25 +29,28 @@ Keep API tokens, other SSH keys, and extracted BMW SDK or firmware files out of 
 
 See the [MGU Store publishing guide](https://github.com/cauliflowermossgrape/mgu-store/blob/main/docs/PUBLISHING.md) for package layout.
 
-## AI Terminal 0.2.1
+## AI Terminal 0.3.0
 
 An ID7 terminal for direct Claude/OpenAI API requests, workspace files and
-commands approved on the head-unit screen. Optional root access uses the
-bundled RSA SSH key or the separate `mgu-ai-root` helper.
+commands approved on the head-unit screen. Version 0.3.0 adds QR pairing and
+a phone page for API-key setup, typing requests, viewing output and stopping
+work. Command approval stays on the car screen.
 
 **Offline prototype; not car-tested. ID8 is not supported by this build.**
-This version uses API keys and has no QR pairing or account sign-in.
+QR pairing configures API keys; ChatGPT/Claude account sign-in is not implemented.
+The phone page uses HTTP on the car's Wi-Fi; hotspot access still needs car testing.
 
-Install from [AI Terminal 0.2.1 releases](https://github.com/Raslin777/mgu-private-apps/releases/tag/ai-terminal-v0.2.1)
-through the Store's **Releases** source. The app archive **includes the root RSA
-key at the owner's explicit request**; anyone downloading it can extract the
-key. The source placeholder does not contain it. API credentials and helper
-tokens are provisioned separately.
+Install [AI Terminal 0.3.0](https://github.com/Raslin777/mgu-private-apps/releases/tag/ai-terminal-v0.3.0)
+through the Store's **Releases** source. The app archive **includes the original
+root RSA key at the owner's explicit request**. Source retains the null key
+placeholder. API credentials and helper tokens are configured separately.
+The optional root helper remains version 0.1.1.
 
-- [Setup, root access and build instructions](docs/AI_TERMINAL.md)
-- [Review findings and release notes](REVIEW_NOTES.md)
+- [Phone setup, root access and build instructions](docs/AI_TERMINAL.md)
+- [Release and review notes](REVIEW_NOTES.md)
 - [Offline validation and remaining limits](VALIDATION.md)
 
-Run `npm test` for 49 offline tests. Build with
+Run `npm test` for 57 offline tests. Both Node 8 compatibility checks pass,
+including phone pairing over real loopback HTTP. Build with
 `python tools/build.py --root-key <path-to-private-key>`, or `--no-root-key`.
 Build the optional helper with `python tools/package-root.py`.

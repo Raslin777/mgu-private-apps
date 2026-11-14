@@ -8,6 +8,7 @@ const Agent = require('./agent').Agent;
 const Tools = require('./tools').Tools;
 const draw = require('./view').draw;
 const spell = require('./speller').spell;
+const PhoneLink = require('./link').PhoneLink;
 
 const LEASE = '/run/mgu-uplink/lease.json';
 const ROOT_SOCKET = '/run/mgu-ai-root/root.sock';
@@ -47,15 +48,47 @@ mgu.run({
             ctx.ui.text('BTN_ASK', review ? 'Approve' : 'Ask');
             ctx.ui.text('BTN_SETUP', review ? 'Deny' : 'Reload');
         };
-        // Reads config.json again: the keys are provisioned over SSH, never typed here.
+        // Phone link: the pairing screen shows while the link is on and no phone is paired.
+        const state = () => {
+            const s = agent || idle;
+            const a = s.approvals[0];
+            return {
+                configured: !!agent, provider: agent ? agent.provider.label : null, status: s.status, busy: !!s.busy,
+                lines: s.lines.slice(-80),
+                approval: a ? { command: a.command, root: a.root, reason: a.reason, flags: a.flags } : null
+            };
+        };
+        const link = new PhoneLink({
+            handlers: {
+                state: state,
+                setup(fields) {
+                    if (agent && agent.busy) throw new Error('Stop the current request first');
+                    config.update(ctx.dataDir, fields);
+                    if (!setup()) throw new Error(idle.lines[0] || 'Settings were not accepted');
+                },
+                // Requests typed on the phone go through the same checks as the car keyboard.
+                ask(text) {
+                    if (!agent) throw new Error('Add an API key first');
+                    if (agent.busy) throw new Error('Wait for this request, or choose Stop');
+                    offset = 0;
+                    agent.ask(text).catch(e => { agent.status = e.message; });
+                },
+                stop() { if (agent) agent.stop(); },
+                reset() { if (agent) agent.newConversation(); offset = 0; }
+            }
+        });
+        const startLink = () => link.start().catch(e => { (agent || idle).status = e.message; });
+        const pairing = () => (link.running && !link.paired ? link.info() : null);
+        // Reads config.json again. With no settings yet, the phone link opens by itself.
         function setup() {
             let settings;
             try { settings = config.load(ctx.dataDir); }
             catch (e) {
                 agent = null;
                 idle.status = 'Not set up';
-                idle.lines = [e.message, '', 'Setup file: ' + config.file(ctx.dataDir)];
+                idle.lines = [e.message];
                 buttons();
+                startLink();
                 return null;
             }
             const caFile = path.join(ctx.dataDir, 'ca.pem');
@@ -121,6 +154,12 @@ mgu.run({
             setup();
             agent.lines = [];
         }));
+        ctx.ui.onClick('OPT_PHONE', action(async () => {
+            await ctx.ui.open('MAIN');
+            // On: show the pairing code. Already on: turn it off and forget the paired phone.
+            if (link.running) { link.stop(); (agent || idle).status = 'Phone link off'; }
+            else await link.start();
+        }));
         if (ctx.onScroll) ctx.onScroll(dy => { offset = Math.max(0, offset + (dy < 0 ? 3 : -3)); return true; });
         let visibilityTimer;
         ctx.ui.onVisible(() => {
@@ -130,11 +169,13 @@ mgu.run({
                 if (agent && agent.busy && !entering && !ctx.ui.isVisible('MAIN') && !ctx.ui.isVisible('OPTIONS')) agent.stop();
             }, 250);
         });
-        process.once('exit', () => { if (agent) agent.stop(); });
+        process.once('exit', () => { if (agent) agent.stop(); link.stop(); });
         setup();
         ctx.loop('MAIN', 4, () => {
             const cv = ctx.canvas(1600, 520);
-            draw(cv, agent || idle, offset);
+            const shown = agent || idle;
+            shown.configured = !!agent;
+            draw(cv, shown, offset, pairing());
             return ctx.ui.image('MAIN_GFX', cv);
         });
     }

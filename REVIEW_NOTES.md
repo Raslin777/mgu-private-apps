@@ -1,4 +1,30 @@
-# AI Terminal 0.2.1 review and release notes
+# AI Terminal 0.3.0 release notes — November 14, 2026
+
+This update adds the owner's phone-link implementation:
+
+- Scan the QR code on the HU to pair a phone on the car's Wi-Fi.
+- Enter API keys and choose the provider/root setting from the phone page.
+- Type requests, view output, stop work and start a new conversation on the phone.
+- Command approvals remain on the head-unit screen; the phone cannot approve them.
+- Turn the phone link on or off from the app's More menu.
+
+All 57 tests pass. Both Node 8.16.2 compatibility checks pass, including
+pairing and reading state over real loopback HTTP. Runtime syntax checks and
+the SDK-free build pass. No head-unit or live-provider test was performed.
+
+The `mgu_ai_terminal@0.3.0.tgz` release includes the unchanged original RSA key,
+as previously requested. The optional root helper remains version 0.1.1.
+API keys and provisioned tokens are not included. Source keeps the null key
+placeholder; the RSA key is present in the downloadable app package.
+
+In MGU Store, refresh this repository's **Releases** source and update AI
+Terminal. See [phone setup instructions](docs/AI_TERMINAL.md#phone-link) and
+[validation details](VALIDATION.md). Pairing configures an API key; this is
+not ChatGPT/Claude account sign-in. The phone page uses plain HTTP, and phone
+access through the car's hotspot/firewall and QR scanning on the HU remain
+unverified. ID7 only; not car-tested.
+
+## Previous release: 0.2.1 review
 
 Reviewed November 11, 2026. This keeps the owner's direct Claude/OpenAI API
 implementation, native terminal, workspace file tools, command approval,

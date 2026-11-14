@@ -39,3 +39,27 @@ offline from the car. No head-unit changes were made.
 
 The earlier SSH probe timed out before authentication. After the owner
 confirmed the offline scope, no further HU connections were attempted.
+
+## Addendum — November 14, 2026: app 0.3.0 phone-link release
+
+Verified on the development PC:
+
+- `npm test`: 57 tests pass. The 8 new ones run the phone link as a real HTTP
+  server on loopback: pairing with the on-screen code, rejection of every
+  request before pairing, single-phone takeover, lockout after five wrong
+  codes, JSON/size/Host checks, forgetting the phone when the link is turned
+  off, saving settings from the phone, and the pairing screen.
+- `tools/check-link-node8.cjs` starts the link, pairs and reads state over
+  HTTP under Node 8.16.2, and syntax-checks the page's script.
+- The app builds as `dist/mgu_ai_terminal@0.3.0.tgz` with `link.js` and
+  `qrcodegen.js`; `dist/catalog.json` was regenerated for it.
+- The RSA PEM's SHA-256 is unchanged from the 0.2.1 release, and the bundled
+  key matches it after line-ending normalization. Release archives, catalog
+  hashes and uploaded asset hashes were checked again for 0.3.0.
+
+Not verified:
+
+- Whether a phone on the car's hotspot can reach port 8377 on the head unit
+  (firewall, and which address the hotspot interface has).
+- The page in a real phone browser. Its script was syntax-checked only.
+- QR scanning of the code as rendered on the head-unit display.

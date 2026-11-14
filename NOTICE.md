@@ -16,3 +16,7 @@ included in this repository or generated release package.
 The development workspace also retains an earlier Codex/QR prototype under
 `legacy/codex/`. That archive is not included in this repository addition or
 release, and none of its code is built into this app.
+
+`apps/mgu_ai_terminal/qrcodegen.js` is Project Nayuki's QR Code generator v1.5.0,
+MIT licensed, with the CommonJS export from mgu-store. The full notice is in
+that file.
