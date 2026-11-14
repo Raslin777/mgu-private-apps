@@ -40,7 +40,7 @@ On top of that fixed cost the kit spends time in four places:
 
 ## Why the Android app is faster
 
-Paths are in `AndroidStudioProjects/BMWCOLOR/app/src/main/java/com/ivionics/bmwcolor/`.
+Paths are in `AndroidStudioProjects/BMWCOLOR/app/src/main/java/com/bmwcolor/`.
 
 - **A direct link.** It talks HSFZ over TCP port 6801 straight to the car's gateway as tester 0xF4
   (`data/obd/BdcTcpClient.kt:347-388`, `412-415`) and reads the answer off the socket. There is no gateway
