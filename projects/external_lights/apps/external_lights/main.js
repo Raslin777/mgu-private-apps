@@ -50,6 +50,7 @@ mgu.run({
                 lit: LAMPS.filter((l) => player.isLit(l.key)).map((l) => l.key),
                 show: current().name, state: player.state, reason: player.reason, lamp: picked() ? picked().name : 'No available lamps',
                 warning: vehicle.reason(), speed: vehicle.speed(), rtt: player.rtt, writes: player.writes, skipped: player.skipped,
+                failure: session.lastFailure, cleanupFailure: session.cleanupFailure,
                 refused: player.refused.map((k) => LAMPS.find((l) => l.key === k).name), link: !!diag.p,
             });
             return ui.image('MAIN_GFX', cv);

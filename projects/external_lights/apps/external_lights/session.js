@@ -2,6 +2,19 @@
 const { BDC, LAMPS, MAX_MS } = require('./lamps');
 const KEEP_MS = 2000;
 const hex = bytes => bytes ? Array.prototype.map.call(bytes, b => ('0' + b.toString(16)).slice(-2)).join(' ') : 'no reply';
+const NRC = {
+    0x10: 'General reject', 0x11: 'Service not supported', 0x12: 'Subfunction not supported',
+    0x13: 'Incorrect request length/format', 0x21: 'Controller busy', 0x22: 'Conditions not correct',
+    0x24: 'Request sequence error', 0x31: 'Request out of range', 0x33: 'Security access denied',
+    0x7e: 'Subfunction unavailable in session', 0x7f: 'Service unavailable in session'
+};
+function phase(sid, data, cleanup) {
+    if (sid === 0x10) return data[0] === 3 ? 'Extended session setup' : 'Default session cleanup';
+    if (sid === 0x3e) return 'Session keepalive';
+    if (sid === 0x22) return data[0] === 0xf1 ? 'BDC identity read' : 'D542 capability read';
+    const selected = LAMPS.find(l => l.id === data[3]);
+    return (cleanup ? 'Lamp-off cleanup: ' : 'Lamp command: ') + (selected ? selected.name : 'unknown');
+}
 class Session {
     constructor(diag, log, options) {
         const o = options || {};
@@ -9,6 +22,7 @@ class Session {
         this.allowed = o.allowed || (() => 'No vehicle interlock');
         this.entered = false; this.attempted = false; this.last = 0; this.conflictUntil = 0;
         this.audit = []; this.cleanupFailed = false;
+        this.lastFailure = null; this.cleanupFailure = null;
         if (typeof diag.on === 'function') diag.on('frame', f => {
             const u = f.uds || [];
             // Other BDC DIDs include Better Lighting's ambient reads/writes.
@@ -36,22 +50,32 @@ class Session {
         if (cleanup && !(sid === 0x10 && data[0] === 1) && !(sid === 0x2e && data[4] === 0 && data[5] === 0)) throw new Error('Invalid cleanup request');
         if (!cleanup) { const why = this.reason(); if (why) throw new Error(why); }
         const start = this.now();
-        const accept = u => (u[0] === sid + 0x40 && data.slice(0, sid === 0x22 || sid === 0x2e ? 2 : 1).every((b, i) => u[i + 1] === b)) || (u[0] === 0x7f && u[1] === sid);
+        const echoLength = sid === 0x22 || sid === 0x2e ? 2 : 1;
+        const accept = u => !!u && ((u.length >= 1 + echoLength && u[0] === sid + 0x40 && data.slice(0, echoLength).every((b, i) => u[i + 1] === b)) || (u.length >= 3 && u[0] === 0x7f && u[1] === sid));
         let reply = null, error = null;
         try { reply = await this.diag.physical(BDC, sid, data, 1000, accept,
             { maxRetries: 0, callTimeoutMs: 1200, pendingTimeoutMs: 1000, hardTimeoutMs: 2000 }); }
         catch (e) { error = String(e.message || e); }
         this.last = this.now();
-        const record = { request: hex([sid].concat(data)), reply: hex(reply), ms: this.last - start, error: error, cleanup: !!cleanup };
+        const record = { ecu: '40', phase: phase(sid, data, cleanup), request: hex([sid].concat(data)), reply: hex(reply), ms: this.last - start, error: error, cleanup: !!cleanup };
         this.audit.push(record); if (this.audit.length > 100) this.audit.shift();
         this.log.info('external lights: ' + JSON.stringify(record));
         if (!reply || !accept(reply) || reply[0] === 0x7f) {
-            throw new Error(error || (!reply ? 'No answer from the body controller' : 'Refused: NRC ' + hex([reply[2]])));
+            const nrc = reply && accept(reply) && reply[0] === 0x7f ? reply[2] : null;
+            const message = error || (!reply ? 'No answer from the body controller' : nrc !== null ?
+                (NRC[nrc] || 'Controller rejected request') + ' (NRC ' + hex([nrc]).toUpperCase() + ')' : 'Unexpected controller reply');
+            const detail = Object.assign({}, record, { nrc: nrc, message: message });
+            if (cleanup) this.cleanupFailure = detail;
+            else this.lastFailure = detail;
+            const failure = new Error(message);
+            failure.detail = detail;
+            throw failure;
         }
         return reply;
     }
     async open() {
         this.cleanupFailed = false;
+        this.lastFailure = null; this.cleanupFailure = null;
         const id = await this.request(0x22, [0xf1, 0x50]);
         if (id.length <= 3) throw new Error('BDC identification was empty');
         const functions = await this.request(0x22, [0xd5, 0x42]);
@@ -75,4 +99,4 @@ class Session {
         this.attempted = false;
     }
 }
-module.exports = { Session, KEEP_MS };
+module.exports = { Session, KEEP_MS, NRC };

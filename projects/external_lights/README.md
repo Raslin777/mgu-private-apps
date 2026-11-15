@@ -1,4 +1,24 @@
-# External Lights 0.2.1
+# External Lights 0.2.2
+
+## Diagnostic error details — November 15, 2026
+
+Version 0.2.2 translates NRCs (including 22: Conditions not correct) and shows
+the failed step, ECU address, full TX request and RX reply. Cleanup failures
+are displayed separately and cannot overwrite the original command refusal.
+Timeouts, malformed replies and unrelated replies are distinguished from a
+valid negative response. A new run clears the previous failure details.
+
+Source review of upstream Ambient Config confirms its movement guard applies
+to the full light show (`gateWhy(..., 'show')`); with its other requirements
+met, the strobe gate does not reject movement. This was checked directly with
+the upstream pure gate functions. Its BDC function path also uses 10 03 and
+2E D542, while other modes use different headlight/output-control functions.
+That source does not establish which request failed on this car. NRC 22 alone
+is not evidence of a universal HU speed lock, or of a specific failed condition.
+
+This release changes diagnostics, not ECU checks. Movement remains warning-only.
+34 tests pass; one optional catalog test is skipped; Node 8 checks pass. The
+new error display was rendered offline and visually checked with simulated data.
 
 ## Installation correction — November 15, 2026
 
@@ -37,11 +57,11 @@ The complete diagnostic table is retained for reference only.
 
 The screen labels the picture as **Commands accepted (not measured light
 output)**. Actual illumination and restoration require a real car test.
-29 tests pass, one optional catalog check is skipped, and the local ISTA
+34 tests pass, one optional catalog check is skipped, and the local ISTA
 reference check, Node 8 compatibility check and SDK-free build pass.
 No live car connection was made. See [VALIDATION.md](VALIDATION.md).
 
-Install version 0.2.1 from this repository's Releases source in MGU Store.
+Install version 0.2.2 from this repository's Releases source in MGU Store.
 Build with `python tools/build.py`; tests use `npm test`.
 
 The new workflow was independently implemented after reviewing public

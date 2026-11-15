@@ -19,6 +19,59 @@ function fixture(replies) {
 }
 const ready = () => [[0x62, 0xf1, 0x50, 1], [0x62, 0xd5, 0x42, 1], [0x50, 3]];
 
+test('NRC 22 identifies the failed request without claiming a speed lock', async () => {
+    for (const [sid, data, step] of [
+        [0x22, [0xf1,0x50], 'BDC identity read'],
+        [0x22, [0xd5,0x42], 'D542 capability read'],
+        [0x10, [3], 'Extended session setup'],
+        [0x2e, [0xd5,0x42,0,6,0,10], 'Lamp command: Indicator left'],
+        [0x3e, [0], 'Session keepalive']
+    ]) {
+        const f = fixture([[0x7f,sid,0x22]]);
+        await assert.rejects(f.session.request(sid,data), e => {
+            assert.equal(e.message, 'Conditions not correct (NRC 22)');
+            assert.equal(e.detail.phase, step);
+            assert.equal(e.detail.nrc, 0x22);
+            assert.equal(e.detail.ecu, '40');
+            assert.match(e.detail.reply, /^7f /);
+            return true;
+        });
+        assert.equal(f.session.lastFailure.phase, step);
+    }
+});
+test('cleanup refusal preserves the original lamp refusal and both raw responses', async () => {
+    const f = fixture(ready().concat([[0x7f,0x2e,0x22],[0x7f,0x10,0x22]]));
+    await f.session.open();
+    await assert.rejects(f.session.write([0xd5,0x42,0,6,0,10]));
+    await f.session.close();
+    assert.equal(f.session.lastFailure.reply, '7f 2e 22');
+    assert.equal(f.session.cleanupFailure.reply, '7f 10 22');
+    assert.equal(f.session.cleanupFailed, true);
+});
+test('timeouts and unrelated/malformed replies are not mislabeled NRC 22', async () => {
+    for (const response of [null, [0x7f,0x22], [0x7f,0x2e,0x22]]) {
+        const f = fixture([response]);
+        await assert.rejects(f.session.request(0x10,[3]));
+        assert.equal(f.session.lastFailure.nrc, null);
+        assert.doesNotMatch(f.session.lastFailure.message, /NRC 22/);
+    }
+});
+test('the screen shows phase, ECU and TX/RX, including a separate cleanup failure', () => {
+    const { draw } = require('../apps/external_lights/view');
+    const texts = [];
+    draw({ clear() {}, roundRect() {}, text(s,x,y) { texts.push({ s,x,y }); } },
+        { bg:'#000', text:'#fff', dim:'#888', warn:'#f00' }, {
+            state:'idle', reason:'Conditions not correct (NRC 22)', show:'test', link:true,
+            failure:{ phase:'Extended session setup', ecu:'40', request:'10 03', reply:'7f 10 22' },
+            cleanupFailure:{ message:'Conditions not correct (NRC 22)' }
+        });
+    assert.ok(texts.some(t => t.s === 'Failed step: Extended session setup'));
+    assert.ok(texts.some(t => t.s === 'ECU 40 TX: 10 03'));
+    assert.ok(texts.some(t => t.s === 'RX: 7F 10 22'));
+    assert.ok(texts.some(t => t.s.startsWith('Cleanup:')));
+    assert.ok(texts.every(t => t.y < 520));
+});
+
 test('read-only identity/capability preflight precedes session, keepalive and default cleanup; no retries', async () => {
     const f = fixture(ready().concat([[0x7e, 0], [0x50, 1]]));
     await f.session.open(); f.time(2500); assert.equal(f.session.due(), true);

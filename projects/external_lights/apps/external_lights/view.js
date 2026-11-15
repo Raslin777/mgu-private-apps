@@ -48,12 +48,18 @@ function draw(cv, t, s) {
     cv.text('Show: ' + s.show, x, 168, 26, t.text);
     cv.text('Lamp for a test: ' + (s.lamp || '-'), x, 208, 26, t.text);
     const lines = [];
+    if (s.failure) {
+        lines.push('Failed step: ' + s.failure.phase);
+        lines.push('ECU ' + s.failure.ecu + ' TX: ' + s.failure.request.toUpperCase());
+        lines.push('RX: ' + s.failure.reply.toUpperCase());
+    }
+    if (s.cleanupFailure) lines.push('Cleanup: ' + s.cleanupFailure.message);
     if (s.speed != null) lines.push('Speed ' + Math.round(s.speed) + ' km/h');
     if (s.rtt) lines.push(s.rtt + ' ms a request, ' + s.writes + ' sent' + (s.skipped ? ', ' + s.skipped + ' left out (link too slow)' : ''));
     if (s.refused && s.refused.length) lines.push('Commands refused: ' + s.refused.join(', '));
     lines.push(s.warning || 'Warning: light effects may distract or mislead other drivers.');
     lines.push('Not car-tested. Actual illumination/restoration needs verification.');
-    lines.forEach((line, i) => cv.text(line, x, 268 + i * 34, 20, t.dim));
+    lines.slice(0, 9).forEach((line, i) => cv.text(line, x, 258 + i * 26, 18, t.dim));
     return top;
 }
 

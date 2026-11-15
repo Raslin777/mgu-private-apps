@@ -1,6 +1,6 @@
-# External Lights 0.2.1 validation — November 15, 2026
+# External Lights 0.2.2 validation — November 15, 2026
 
-30 tests pass and one optional HU catalog check is skipped. The local ISTA
+34 tests pass and one optional HU catalog check is skipped. The local ISTA
 reference-file check passes. SDK-free build and Node 8.16.2 compatibility pass.
 
 New coverage includes read-only preflight, matching session replies,
@@ -21,6 +21,14 @@ rechecked against its catalog in this run.
 The 0.2.1 regression compares the gearbox subscription permission against
 the pinned upstream app manifest and verifies the packaged SOME/IP manifest
 uses subscription-only access. Live installation has not been verified.
+
+The 0.2.2 checks cover NRC 22 at each workflow phase, separate primary and
+cleanup refusals, malformed/unrelated replies and timeouts, plus on-screen
+phase/ECU/TX/RX details within the canvas bounds. A simulated error screen was
+rendered and visually inspected. Upstream Ambient Config's pure gate functions
+were evaluated with moving=true: its show is blocked, its strobe is allowed
+when enabled and occupied. This is source-level evidence only; no ECU or
+head unit was connected or changed.
 
 ## Historical 0.1.0 validation — November 14, 2026
 
