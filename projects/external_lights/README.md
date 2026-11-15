@@ -36,9 +36,6 @@ The request goes through the head unit's diagnostic service (`InternalTasu`, the
 link Better Lighting uses. That is the only diagnostic call in the app: no session change, no other service, no
 other control unit, no coding (`tests/package.test.cjs` holds the source to that).
 
-How Bimmer Light does it is not known to me: it was not read or run. This app does what its user sees, by the
-function BMW's own description offers for it.
-
 ## What the app does
 
 - **Shows** (`shows.js`): Front to rear, Front and rear in turn, Left and right in turn, Heartbeat, Strobe.
