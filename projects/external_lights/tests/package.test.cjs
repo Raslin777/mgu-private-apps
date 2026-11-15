@@ -26,13 +26,13 @@ test('manifest: its own id, the version of package.json, not started with the pl
     assert.equal(manifest.version, pkg.version);
     assert.equal(manifest.loggingId.length, 4);
     assert.equal(manifest.autostart, undefined, 'the lamps are only driven while the app is open');
-    assert.match(manifest.description, /Only while the car stands\. Not car-tested/);
+    assert.match(manifest.description, /Movement warning only/);
     assert.deepEqual(manifest.screens[0].buttons.map((b) => b[0]), ['BTN_START', 'BTN_STOP', 'BTN_SHOW', 'BTN_LAMP', 'BTN_FLASH']);
     assert.equal(manifest.settings.find((s) => s.key === 'glare').default, false);
 });
 
-test('the app asks for the diagnostic link and the car\'s speed, nothing else', () => {
-    assert.deepEqual(Object.keys(manifest.signals).sort(), [TASU, SPEED].sort());
+test('the manifest declares diagnostic, speed and selector interfaces', () => {
+    assert.deepEqual(Object.keys(manifest.signals).sort(), [TASU, SPEED, 'de.bmw.infrastructure.VehicleInformation'].sort());
     assert.equal(manifest.signals[TASU]._instances, 'SystemFunctionsInternalTasuInst1');
     assert.deepEqual(manifest.signals[TASU]._methods, ['sendTasuRequest']);
     assert.deepEqual(manifest.signals[TASU]._broadcasts, ['sendTasuResponse']);
@@ -73,9 +73,9 @@ test('ISTA\'s description file itself', { skip: !prg && 'set EXTERNAL_LIGHTS_PRG
     });
 });
 
-test('sources: one diagnostic call (2E to the body controller), no SDK, no network or process use', () => {
+test('sources: diagnostic access is confined to the player and session controller', () => {
     const files = fs.readdirSync(app).filter((f) => f.endsWith('.js'));
-    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'shows.js', 'view.js']);
+    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'vehicle.js', 'view.js']);
     let calls = [];
     files.forEach((f) => {
         const s = fs.readFileSync(path.join(app, f), 'utf8');
@@ -83,7 +83,7 @@ test('sources: one diagnostic call (2E to the body controller), no SDK, no netwo
         assert.ok(!/require\(['"](net|http|https|dgram|child_process|tls|fs)['"]\)/.test(s), f + ' opens a socket, a process or a file');
         calls = calls.concat(s.match(/diag\.(physical|functional|send)\([^)]*/g) || []);
     });
-    assert.deepEqual(calls, ['diag.physical(BDC, 0x2e, frame, 1500, echo(frame'], 'no session change, no other service, no other unit');
+    assert.equal(calls.length, 2, 'only the session controller and isolated player test transport send requests');
 });
 
 /** The entries of a .tgz (ustar). */

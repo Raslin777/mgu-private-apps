@@ -45,6 +45,9 @@ const TABLE = {
     grille: [0x16, 'Lit grille', 'front'],
 };
 const LAMPS = Object.keys(TABLE).map((key) => ({ key, id: TABLE[key][0], name: TABLE[key][1], where: TABLE[key][2], glare: !!TABLE[key][3] }));
+// Retain the diagnostic table for reference, but do not guess at headlight
+// controllers or take over brake/tail illumination in this unverified build.
+LAMPS.forEach(l => { l.experimental = ['turnL', 'turnR', 'parkL', 'parkR', 'reverse', 'fogR'].indexOf(l.key) < 0; });
 const BY_KEY = {};
 LAMPS.forEach((l) => { BY_KEY[l.key] = l; });
 

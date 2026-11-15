@@ -35,6 +35,7 @@ const TABLE = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0c,
 function Car(clock, o) {
     o = o || {};
     this.clock = clock;
+    this.p = {}; this.available = true;
     this.writeMs = o.writeMs == null ? 200 : o.writeMs;
     this.missing = o.missing || [];                  // lamp function numbers this car refuses as out of range
     this.silent = false; this.refuse = 0;
@@ -56,7 +57,8 @@ Car.prototype.physical = function (target, sid, data, timeoutMs) {
     const heard = !this.silent && target === 0x40;
     return new Promise(function (resolve) {
         self.clock.setTimer(function () {
-            const answer = !heard ? null : sid === 0x2e ? self._write(data) : [0x7f, sid, 0x11];
+            const answer = !heard ? null : sid === 0x2e ? self._write(data) :
+                sid === 0x22 ? [0x62].concat(data, [1]) : sid === 0x10 ? [0x50, data[0]] : sid === 0x3e ? [0x7e, 0] : [0x7f, sid, 0x11];
             self.inFlight--; rec.done = self.clock.now(); rec.reply = answer; resolve(answer);
         }, heard ? self.writeMs : timeoutMs || 4000);
     });
@@ -81,10 +83,12 @@ function rig(o) {
     o = o || {};
     const clock = new Clock(), car = new Car(clock, o), state = { moving: false };
     const Player = require(path.join(APP, 'player')).Player;
+    const session = o.session ? new (require(path.join(APP, 'session')).Session)(car, quiet, { now: () => clock.now(), allowed: () => null }) : null;
     const player = new Player({ diag: car, log: quiet, now: function () { return clock.now(); },
         setTimer: function (fn, ms) { return clock.setTimer(fn, ms); }, clearTimer: function (id) { clock.clearTimer(id); },
+        session: session, allowed: o.allowed || (session ? () => session.reason() : () => state.moving ? 'The car is moving' : null),
         moving: function () { return state.moving; }, maxMs: function () { return o.maxMs || 180000; } });
-    return { clock: clock, car: car, player: player, state: state };
+    return { clock: clock, car: car, player: player, state: state, session: session };
 }
 
 module.exports = { APP: APP, Clock: Clock, Car: Car, TABLE: TABLE, rig: rig, quiet: quiet };

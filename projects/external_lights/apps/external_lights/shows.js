@@ -29,6 +29,8 @@ const SHOWS = [
 /** The show with that key (the first one for an unknown key), built for opts { glare }. */
 function show(key, opts) {
     const s = SHOWS.find((x) => x.key === key) || SHOWS[0], made = s.make(opts || {});
+    const initial = { drl: 'turnL', low: 'turnR', high: 'parkR', side: 'parkL', brake: 'reverse' };
+    made.events = made.events.map(e => Object.assign({}, e, { lamp: initial[e.lamp] || e.lamp }));
     made.events.forEach((e) => { if (!lamp(e.lamp)) throw new Error(s.key + ': no such lamp ' + e.lamp); });
     return { key: s.key, name: s.name, period: made.period, events: made.events.slice().sort((a, b) => a.t - b.t) };
 }

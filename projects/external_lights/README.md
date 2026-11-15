@@ -1,4 +1,48 @@
-# External Lights for MGU
+# External Lights 0.2.0
+
+## Current behavior — November 15, 2026
+
+Movement, stale/missing speed and unconfirmed Park are warning-only, as
+requested by the owner. They do not block effects. This supersedes the
+stationary-only behavior in the historical 0.1.0 notes below.
+
+Every new run requires available TASU, a nonempty BDC identity reply to
+`22 F1 50`, a nonempty D542 read reply, then a matching `50 03` response to
+extended-session setup. Read support does not prove that every lamp is fitted.
+Session keepalive (`3E 00`), lamp commands and default-session cleanup (`10 01`)
+are serialized. Writes are not automatically replayed after uncertain replies.
+Stop and errors attempt lamp-off/default-session cleanup; shutdown is best
+effort within the platform grace period. No physical shutoff deadline is claimed.
+Raw requests, replies, timing and cleanup results go to the platform log and
+a bounded in-memory audit.
+
+Other BDC DID replies, including Better Lighting's ambient traffic, block new
+work for five seconds and stop active work. Stop Better Lighting and other
+diagnostic clients first. This detects observed traffic; it is not exclusive
+ownership of TASU and cannot distinguish another client's identical D542
+request. This release does not change other installed apps.
+
+Selectable functions are indicators, parking lights, reversing lights and
+rear fog with opt-in. Shows use that subset. Brake/tail, low beam, DRL,
+high beam and other experimental functions are disabled at the player and
+request-controller boundaries. No FLE/FLM guessing or output probing is added.
+The complete diagnostic table is retained for reference only.
+
+The screen labels the picture as **Commands accepted (not measured light
+output)**. Actual illumination and restoration require a real car test.
+29 tests pass, one optional catalog check is skipped, and the local ISTA
+reference check, Node 8 compatibility check and SDK-free build pass.
+No live car connection was made. See [VALIDATION.md](VALIDATION.md).
+
+Install version 0.2.0 from this repository's Releases source in MGU Store.
+Build with `python tools/build.py`; tests use `npm test`.
+
+The new workflow was independently implemented after reviewing public
+[Ambient Config](https://github.com/cauliflowermossgrape/idrive7-apps/blob/main/apps/ambient_config/strobe.js),
+[Light Show](https://github.com/eroobeeroo/idrive7-apps/blob/main/apps/light_show/lamps.js)
+and [svietlik](https://github.com/egzey0/svietlik/blob/main/PROTOCOL.md).
+
+## Historical 0.1.0 design notes (superseded above)
 
 A head-unit app (iDrive 7) that plays light shows on the car's **exterior lamps** and can flash each lamp on its
 own, in the manner of light-show. It runs only while the car stands.

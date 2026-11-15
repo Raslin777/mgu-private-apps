@@ -1,4 +1,24 @@
-# External Lights offline validation — November 14, 2026
+# External Lights 0.2.0 validation — November 15, 2026
+
+29 tests pass and one optional HU catalog check is skipped. The local ISTA
+reference-file check passes. SDK-free build and Node 8.16.2 compatibility pass.
+
+New coverage includes read-only preflight, matching session replies,
+unavailable TASU, empty/refused capability and identification reads, session
+refusal, keepalive in quiet gaps, lost session replies, failed cleanup,
+forbidden brake/headlight requests, no replay after an uncertain activation,
+serialized requests, Stop during setup and movement/stale-telemetry warnings.
+The real session controller is exercised with the player against a simulated
+BDC. Movement does not prevent writes in the production configuration.
+
+No head unit or car was connected. Actual ECU acceptance, physical lamp
+output/restoration and physical shutdown timing remain unverified. Stop other
+diagnostic clients; observed foreign-DID detection is not a global TASU lock.
+The new selector field is based on the pinned kit's
+VehicleInformation.statusGearboxDrive; availability on this HU has not been
+rechecked against its catalog in this run.
+
+## Historical 0.1.0 validation — November 14, 2026
 
 Nothing here was run on a car or a head unit. The head unit was not contacted. The request `2E D542` was never
 sent to a car by this project. Every timing comes from a simulated car whose answer time is an assumption.

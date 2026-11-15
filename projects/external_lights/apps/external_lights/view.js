@@ -23,7 +23,7 @@ SPOTS.both = SPOTS.left.concat(SPOTS.right);
 /** What the top line says. */
 function headline(s) {
     if (s.link === false) return { text: 'No diagnostic link to the car', warn: true };
-    if (s.moving) return { text: 'Only while the car stands', warn: true };
+    if (s.state === 'preparing') return { text: 'Checking BDC and diagnostic session', warn: false };
     if (s.state === 'playing') return { text: 'Playing: ' + s.show, warn: false };
     if (s.state === 'stopping') return { text: 'Switching the lamps off', warn: false };
     if (s.reason && s.reason !== 'Stopped') return { text: s.reason, warn: true };
@@ -32,7 +32,7 @@ function headline(s) {
 
 function draw(cv, t, s) {
     cv.clear(t.bg);
-    cv.text('In the car', 44, 90, 30, t.text, { font: 'bold' });
+    cv.text('Commands accepted (not measured light output)', 44, 90, 25, t.text, { font: 'bold' });
     cv.roundRect(CAR.x, CAR.y, CAR.w, CAR.h, 70, '#2a2f37');
     cv.roundRect(CAR.x + 150, CAR.y + 34, 330, CAR.h - 68, 40, '#11151b');
     cv.text('front', CAR.x - 4, CAR.y + CAR.h + 44, 18, t.dim);
@@ -50,8 +50,9 @@ function draw(cv, t, s) {
     const lines = [];
     if (s.speed != null) lines.push('Speed ' + Math.round(s.speed) + ' km/h');
     if (s.rtt) lines.push(s.rtt + ' ms a request, ' + s.writes + ' sent' + (s.skipped ? ', ' + s.skipped + ' left out (link too slow)' : ''));
-    if (s.refused && s.refused.length) lines.push('Not in this car: ' + s.refused.join(', '));
-    lines.push('Not car-tested. Lamps go off by themselves when their time is over.');
+    if (s.refused && s.refused.length) lines.push('Commands refused: ' + s.refused.join(', '));
+    lines.push(s.warning || 'Warning: light effects may distract or mislead other drivers.');
+    lines.push('Not car-tested. Actual illumination/restoration needs verification.');
     lines.forEach((line, i) => cv.text(line, x, 268 + i * 34, 20, t.dim));
     return top;
 }

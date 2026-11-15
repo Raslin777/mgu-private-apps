@@ -41,7 +41,7 @@ test('shows: known lamps, events a step apart inside the period, no glare unless
         });
         assert.ok(s.period - s.events[s.events.length - 1].t >= Shows.STEP_MS, key + ' wraps too close');
     });
-    assert.ok(Shows.show('chase', { glare: true }).events.some((e) => e.lamp === 'high'));
+    assert.ok(Shows.show('chase', { glare: true }).events.every((e) => !L.lamp(e.lamp).experimental));
     assert.equal(Shows.next(Shows.keys()[Shows.keys().length - 1]), Shows.keys()[0]);
 });
 
@@ -50,15 +50,15 @@ test('a show on the car: each event one request at its moment, the lamps on for 
     const show = Shows.show('ends', {});
     assert.equal(r.player.play(show), true);
     await r.clock.run(250);
-    assert.deepEqual(r.car.lit(), [0x04], 'daytime lights on 200 ms after the start');
+    assert.deepEqual(r.car.lit(), [0x06], 'daytime lights on 200 ms after the start');
     await r.clock.run(500);
     assert.deepEqual(r.car.lit(), [], 'and off by themselves 500 ms later');
     await r.clock.run(200);
-    assert.deepEqual(r.car.lit(), [0x0c], 'then the brake lights');
+    assert.deepEqual(r.car.lit(), [0x0f], 'then the reverse lights');
     await r.clock.run(10000 - 950);
     const w = r.car.writes();
     w.forEach((q, i) => {
-        assert.equal(hex(q.data), i % 2 ? 'd542000c0032' : 'd54200040032');
+        assert.equal(hex(q.data), i % 2 ? 'd542000f0032' : 'd54200060032');
         assert.equal(q.t, Math.floor(i / 2) * 1400 + (i % 2) * 700, 'event ' + i + ' at its moment');
     });
     assert.equal(w.length, 15);
@@ -85,7 +85,7 @@ test('pacing: 20 ms after each answer, never more than 10 requests a second, eve
     const r = rig({ writeMs: 5 });
     // a show denser than any of the app's own: an event every 30 ms
     const events = [];
-    for (let i = 0; i < 20; i++) events.push({ t: i * 30, lamp: i % 2 ? 'brake' : 'drl', ms: 100 });
+    for (let i = 0; i < 20; i++) events.push({ t: i * 30, lamp: i % 2 ? 'reverse' : 'turnL', ms: 100 });
     r.player.play({ key: 'dense', name: 'dense', period: 600, events });
     await r.clock.run(10000);
     const w = r.car.writes();
@@ -103,23 +103,23 @@ test('a slow link: events that are too late are left out and the show keeps its 
     w.forEach((q) => assert.ok(q.t % 300 <= P.LATE_MS, 'sent at ' + q.t + ', within ' + P.LATE_MS + ' ms of an event\'s moment'));
 });
 
-test('only while the car stands: no start while moving, and driving off ends the show and switches its lamps off', async () => {
+test('an optional injected motion interlock blocks activation and stops active work', async () => {
     const r = rig();
     r.state.moving = true;
     assert.equal(r.player.play(Shows.show('chase', {})), false);
-    assert.equal(r.player.flash('drl', 1000), false);
+    assert.equal(r.player.flash('turnL', 1000), false);
     await r.clock.run(3000);
     assert.equal(r.car.log.length, 0);
-    assert.equal(headline({ moving: true, state: 'idle', show: 'x' }).text, 'Only while the car stands');
+    assert.equal(headline({ warning: 'Moving', state: 'idle', show: 'x' }).text, 'Ready: x');
     r.state.moving = false;
     // a lamp with a long time, so that it is still on when the car drives off
-    r.player.play({ key: 'long', name: 'long', period: 4000, events: [{ t: 0, lamp: 'low', ms: 3000 }, { t: 400, lamp: 'brake', ms: 3000 }] });
+    r.player.play({ key: 'long', name: 'long', period: 4000, events: [{ t: 0, lamp: 'turnR', ms: 3000 }, { t: 400, lamp: 'reverse', ms: 3000 }] });
     await r.clock.run(1000);
-    assert.deepEqual(r.car.lit(), [0x03, 0x0c]);
+    assert.deepEqual(r.car.lit(), [0x07, 0x0f]);
     r.state.moving = true;
     await r.clock.run(4000);
     assert.deepEqual(r.car.lit(), []);
-    assert.deepEqual(r.car.writes().slice(-2).map((q) => hex(q.data)), ['d54200030000', 'd542000c0000']);
+    assert.deepEqual(r.car.writes().slice(-2).map((q) => hex(q.data)), ['d54200070000', 'd542000f0000']);
     assert.equal(r.player.state, 'idle');
     assert.equal(r.player.reason, 'The car is moving');
     const n = r.car.log.length;
@@ -144,13 +144,13 @@ test('Stop switches off what is still on; a show ends by itself when its time is
 });
 
 test('a lamp this car does not have is tried once and left out; a car with none of a show\'s lamps ends it', async () => {
-    const r = rig({ missing: [0x04] });
+    const r = rig({ missing: [0x06] });
     r.player.play(Shows.show('ends', {}));
     await r.clock.run(6000);
-    assert.deepEqual(r.player.refused, ['drl']);
-    assert.equal(r.car.writes().filter((q) => q.data[3] === 0x04).length, 1);
-    assert.ok(r.car.writes().filter((q) => q.data[3] === 0x0c).length >= 4, 'the rest of the show goes on');
-    const none = rig({ missing: [0x04, 0x0c] });
+    assert.deepEqual(r.player.refused, ['turnL']);
+    assert.equal(r.car.writes().filter((q) => q.data[3] === 0x06).length, 1);
+    assert.ok(r.car.writes().filter((q) => q.data[3] === 0x0f).length >= 4, 'the rest of the show goes on');
+    const none = rig({ missing: [0x06, 0x0f] });
     none.player.play(Shows.show('ends', {}));
     await none.clock.run(6000);
     assert.equal(none.player.state, 'idle');
@@ -167,23 +167,23 @@ test('refused or unanswered: the show ends, nothing is repeated', async () => {
     assert.equal(refused.player.reason, 'Refused: not allowed in this diagnostic session');
     const locked = rig();
     locked.car.refuse = 0x33;
-    locked.player.flash('drl', 500); await locked.clock.run(3000);
+    locked.player.flash('turnL', 500); await locked.clock.run(3000);
     assert.match(locked.player.reason, /security unlock/);
     const silent = rig();
     silent.car.silent = true;
     silent.player.play(Shows.show('ends', {}));
     await silent.clock.run(60000);
-    assert.equal(silent.car.log.length, P.FAILS);
+    assert.equal(silent.car.log.length, 1);
     assert.equal(silent.player.reason, 'No answer from the body controller');
     assert.equal(silent.player.state, 'idle');
 });
 
 test('one lamp for a test: one request, on for a second, nothing after', async () => {
     const r = rig();
-    assert.equal(r.player.flash('fogF', 1000), true);
+    assert.equal(r.player.flash('parkL', 1000), true);
     await r.clock.run(300);
-    assert.deepEqual(r.car.lit(), [0x08]);
-    assert.ok(r.player.isLit('fogF'));
+    assert.deepEqual(r.car.lit(), [0x10]);
+    assert.ok(r.player.isLit('parkL'));
     await r.clock.run(5000);
     assert.deepEqual(r.car.lit(), []);
     assert.equal(r.car.log.length, 1);

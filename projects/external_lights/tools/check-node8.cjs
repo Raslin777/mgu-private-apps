@@ -21,7 +21,7 @@ const LAMPS = require(path.join(sim.APP, 'lamps')).LAMPS;
 
 async function check() {
     const files = fs.readdirSync(sim.APP).filter(function (f) { return /\.js$/.test(f); });
-    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'shows.js', 'view.js']);
+    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'vehicle.js', 'view.js']);
     files.forEach(function (f) {
         new vm.Script('(function (exports, require, module, __filename, __dirname) {' + fs.readFileSync(path.join(sim.APP, f), 'utf8') + '\n})', { filename: f });
     });
@@ -49,15 +49,25 @@ async function check() {
     assert.equal(r.player.reason, 'The car is moving');
     assert.deepEqual(r.car.lit(), []);
     r.state.moving = false;
-    assert.equal(r.player.flash('brake', 1000), true);
+    assert.equal(r.player.flash('reverse', 1000), true);
     await r.clock.run(300);
-    assert.deepEqual(r.car.lit(), [0x0c]);
+    assert.deepEqual(r.car.lit(), [0x0f]);
     r.player.stop('Stopped');
     await r.clock.run(1000);
     assert.deepEqual(r.car.lit(), []);
     assert.equal(r.car.overlaps, 0);
     assert.deepEqual(r.car.bad, []);
+    const live = sim.rig({ session: true });
+    live.state.moving = true; // Production behavior: warning-only, no movement gate.
+    assert.equal(live.player.play(Shows.show('sides')), true);
+    await live.clock.run(4000);
+    assert.ok(live.car.writes().length > 0);
+    live.player.stop('Stopped');
+    await live.clock.run(4000);
+    assert.equal(live.car.overlaps, 0);
+    assert.equal(live.player.state, 'idle');
+    assert.deepEqual(live.car.log.slice(-1).map(function (q) { return [q.sid].concat(q.data); }), [[0x10, 1]]);
     console.log('Node ' + process.version + ': ' + files.length + ' files compile; ' + keys.length + ' shows, a lamp test, the screen, driving off and Stop passed ('
-        + r.car.writes().length + ' requests on the simulated car)');
+        + r.car.writes().length + ' requests on the simulated car); production session and movement-warning checks passed');
 }
 check().then(function () { process.exit(0); }, function (error) { console.error(error); process.exit(1); });

@@ -8,8 +8,8 @@
  * again when its own time is over (at most 10 s, in the shows half a second).
  *
  * Rules:
- *   Only while the car stands (moving() false). Driving off stops the show within WATCH_MS and switches its
- *     lamps off.
+ *   Production uses an explicit session/link interlock. Movement is warning-only.
+ *   WATCH_MS is the scheduler's check interval, not a physical lamp shutoff guarantee.
  *   One request at a time, the answer awaited, GAP_MS rest after it, and never more than one request started
  *     each MIN_WRITE_MS (10 a second). These are the pacing rules of the Better Lighting app's driver.
  *   The show keeps its timing: an event the link could not send within LATE_MS of its moment is left out.
@@ -41,8 +41,12 @@ class Player extends EventEmitter {
         this.setTimer = o.setTimer || setTimeout; this.clearTimer = o.clearTimer || clearTimeout;
         this.moving = o.moving || (() => false);
         this.maxMs = o.maxMs || (() => MAX_SHOW_MS);
+        this.session = o.session || null;
+        this.allowed = o.allowed || (() => this.moving() ? 'The car is moving' : null);
+        this.prepared = false; this.closing = false;
         this.state = 'idle'; this.reason = null; this.show = null;
         this.lit = new Map();          // lamp key -> the moment its time is over
+        this.held = new Map();         // includes uncertain writes, for cleanup only
         this.refused = [];
         this.writes = 0; this.skipped = 0; this.rtt = 0;
         this._t0 = 0; this._i = 0; this._round = 0; this._fails = 0;
@@ -53,22 +57,28 @@ class Player extends EventEmitter {
 
     /** Starts a show. False (and .reason) when the car is moving. */
     play(show) {
-        if (this.moving()) { this._set('idle', 'The car is moving'); return false; }
+        if (this.closing || this.state === 'preparing' || this.state === 'stopping') return false;
+        if (this.session) this.session.cancelled = false;
+        const why = this.allowed();
+        if (why) { if (this.state !== 'idle') this.stop(why); else this._set('idle', why); return false; }
+        if (!show || !show.events || !show.events.length) return false;
+        if (show.events.some(e => !lamp(e.lamp) || lamp(e.lamp).experimental)) { this.reason = 'Experimental lamps disabled'; return false; }
         this.show = show; this._t0 = this.now(); this._i = 0; this._round = 0; this._fails = 0; this.skipped = 0;
-        this._set('playing', null);
+        this._set(this.session && !this.prepared ? 'preparing' : 'playing', null);
         this._kick();
         return true;
     }
 
     /** One lamp on for ms, once. */
     flash(key, ms) {
-        if (!lamp(key)) return false;
+        if (!lamp(key) || lamp(key).experimental || !Number.isFinite(ms) || ms <= 0) return false;
         return this.play({ key: 'flash', name: lamp(key).name, once: true, period: Math.min(MAX_MS, ms) + 100, events: [{ t: 0, lamp: key, ms: Math.min(MAX_MS, ms) }] });
     }
 
     /** Ends the show; its lamps that are still within their time are switched off. */
     stop(reason) {
         if (this.state === 'idle') return;
+        if (this.session) this.session.cancelled = true;
         this._set('stopping', reason || null);
         this._kick();
     }
@@ -87,10 +97,13 @@ class Player extends EventEmitter {
     }
 
     /** One request, its answer awaited: the reply bytes, or null. */
-    async _write(frame) {
+    async _write(frame, cleanup) {
         let reply = null;
         const t = this._startAt = this.now();
-        try { reply = await this.diag.physical(BDC, 0x2e, frame, 1500, echo(frame), { retryBaseMs: 20, maxRetries: 10 }); } catch (e) { this.log.warn('lights: ' + (e && e.message || e)); }
+        try {
+            if (this.session) reply = await this.session.write(frame, cleanup);
+            else reply = await this.diag.physical(BDC, 0x2e, frame, 1500, echo(frame), { maxRetries: 0 });
+        } catch (e) { this.log.warn('lights: ' + (e && e.message || e)); this.reason = e.message; }
         const now = this._answerAt = this.now();
         if (reply && reply[0] === 0x6e) { this.writes++; this.rtt = this.rtt ? Math.round(this.rtt * 0.8 + (now - t) * 0.2) : now - t; }
         return reply;
@@ -104,17 +117,31 @@ class Player extends EventEmitter {
         try {
             for (;;) {
                 if (this.state === 'idle') return;
+                if (this.state === 'preparing') {
+                    try { await this.session.open(); }
+                    catch (e) { this._set('idle', e.message); return; }
+                    if (this.state !== 'preparing') continue;
+                    const why = this.allowed();
+                    if (why) { this._set('stopping', why); continue; }
+                    this.prepared = true; this._t0 = this.now(); this._set('playing', null);
+                }
                 const rest = this._rest();
                 if (rest > 0) { this._wake(rest); return; }
                 if (this.state === 'stopping') {
                     let key = null;
-                    this.lit.forEach((until, k) => { if (!key && until > this.now()) key = k; });
+                    this.held.forEach((until, k) => { if (!key && until > this.now()) key = k; });
                     if (!key) { this.lit.clear(); this._set('idle', this.reason); return; }
                     this.lit.delete(key);
-                    await this._write(offFrame(key));
+                    this.held.delete(key);
+                    await this._write(offFrame(key), true);
                     continue;
                 }
-                if (this.moving()) { this._set('stopping', 'The car is moving'); continue; }
+                const why = this.allowed();
+                if (why) { this._set('stopping', why); continue; }
+                if (this.session && this.session.due()) {
+                    try { await this.session.keep(); } catch (e) { this._set('stopping', e.message); }
+                    continue;
+                }
                 if (this.now() - this._t0 > this.maxMs()) { this._set('stopping', 'Time is up'); continue; }
                 const show = this.show, ev = show.events[this._i], due = this._t0 + this._round * show.period + ev.t;
                 // waiting for an event's moment, the car is looked at every WATCH_MS: driving off is not left until the next event
@@ -125,15 +152,29 @@ class Player extends EventEmitter {
                     if (show.events.every((e) => this.refused.indexOf(e.lamp) >= 0)) { this._fail('The car has none of these lamps'); return; }
                 } else if (this.now() - due > LATE_MS) this.skipped++;
                 else {
+                    // Track an uncertain activation too: a lost reply does not prove no write occurred.
+                    this.held.set(ev.lamp, this.now() + ev.ms + 2000);
                     const reply = await this._write(onFrame(ev.lamp, ev.ms));
-                    if (reply && reply[0] === 0x6e) { this._fails = 0; this.lit.set(ev.lamp, this.now() + ev.ms); this.emit('change'); }
+                    if (reply && reply[0] === 0x6e) { this._fails = 0; this.lit.set(ev.lamp, this.now() + ev.ms); this.held.set(ev.lamp, this.now() + ev.ms); this.emit('change'); }
                     else if (reply && reply[2] === NO_SUCH) { this.refused.push(ev.lamp); this.log.info('lights: the car refused ' + lamp(ev.lamp).name); this.emit('change'); }
                     else if (reply) { this._fail('Refused: ' + (NRC[reply[2]] || 'code ' + (reply[2] || 0).toString(16))); return; }
-                    else if (++this._fails >= FAILS) { this._fail('No answer from the body controller'); return; }
+                    else { this._fail(this.reason || 'No answer from the body controller'); return; }
                 }
                 if (last && this.state === 'playing') { this._set('idle', null); return; }
             }
-        } finally { this._running = false; }
+        } finally {
+            if (this.state === 'idle' && this.session) {
+                this.closing = true;
+                // A timed request can have succeeded even if its reply was lost.
+                for (const key of this.held.keys()) {
+                    if (this.held.get(key) > this.now()) await this._write(offFrame(key), true);
+                }
+                await this.session.close();
+                if (this.session.cleanupFailed) this.reason = 'Cleanup not confirmed; verify lamps and cycle ignition';
+                this.prepared = false; this.closing = false; this.lit.clear(); this.held.clear(); this.emit('change');
+            }
+            this._running = false;
+        }
     }
 }
 
