@@ -61,7 +61,7 @@ Build the optional helper with `python tools/package-root.py`.
 |---|---|---|
 | Better Lighting | [Ambient colours and effects](projects/BettetLighting/README.md) | 0.1.0 |
 | Camera Cluster | [Front/rear camera in the cluster](projects/Camera-Cluster/README.md) | 0.1.0 |
-| External Lights | [Exterior light shows and lamp tests](projects/external_lights/README.md) | 0.2.0 |
+| External Lights | [Exterior light shows and lamp tests](projects/external_lights/README.md) | 0.2.1 |
 
 [Download the reviewed packages](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14).
 Refresh this repository's **Releases** source in MGU Store. Camera Cluster
@@ -76,4 +76,4 @@ run `npm test` from the corresponding project directory.
 [Review findings and validation](docs/CUSTOM_APPS_REVIEW_2026-11-14.md).
 AI Terminal and AWD Diagnostic remain available. The emulator is excluded.
 
-External Lights [0.2.0 update](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.0) adds diagnostic preflight/session handling and movement warnings.
+External Lights [0.2.1 update](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.1) adds diagnostic preflight/session handling and movement warnings.

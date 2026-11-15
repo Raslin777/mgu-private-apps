@@ -1,6 +1,6 @@
-# External Lights 0.2.0 validation — November 15, 2026
+# External Lights 0.2.1 validation — November 15, 2026
 
-29 tests pass and one optional HU catalog check is skipped. The local ISTA
+30 tests pass and one optional HU catalog check is skipped. The local ISTA
 reference-file check passes. SDK-free build and Node 8.16.2 compatibility pass.
 
 New coverage includes read-only preflight, matching session replies,
@@ -17,6 +17,10 @@ diagnostic clients; observed foreign-DID detection is not a global TASU lock.
 The new selector field is based on the pinned kit's
 VehicleInformation.statusGearboxDrive; availability on this HU has not been
 rechecked against its catalog in this run.
+
+The 0.2.1 regression compares the gearbox subscription permission against
+the pinned upstream app manifest and verifies the packaged SOME/IP manifest
+uses subscription-only access. Live installation has not been verified.
 
 ## Historical 0.1.0 validation — November 14, 2026
 

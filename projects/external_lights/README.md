@@ -1,4 +1,11 @@
-# External Lights 0.2.0
+# External Lights 0.2.1
+
+## Installation correction — November 15, 2026
+
+Version 0.2.1 requests subscription-only access to the event-only gearbox
+field, matching the upstream app kit. Version 0.2.0 incorrectly requested a
+getter as well. This is a manifest compatibility fix; installation on the
+head unit still needs confirmation.
 
 ## Current behavior — November 15, 2026
 
@@ -34,7 +41,7 @@ output)**. Actual illumination and restoration require a real car test.
 reference check, Node 8 compatibility check and SDK-free build pass.
 No live car connection was made. See [VALIDATION.md](VALIDATION.md).
 
-Install version 0.2.0 from this repository's Releases source in MGU Store.
+Install version 0.2.1 from this repository's Releases source in MGU Store.
 Build with `python tools/build.py`; tests use `npm test`.
 
 The new workflow was independently implemented after reviewing public

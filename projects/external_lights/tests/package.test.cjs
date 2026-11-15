@@ -12,6 +12,18 @@ const app = path.join(root, 'apps', 'external_lights');
 const manifest = JSON.parse(fs.readFileSync(path.join(app, 'app.json'), 'utf8'));
 const TASU = 'com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu';
 const SPEED = 'de.bmw.infotainment.vehicle.Vehicle2';
+const GEARBOX = 'de.bmw.infrastructure.VehicleInformation';
+
+test('event-only gearbox permission matches the pinned upstream manifest and the built package', () => {
+    const upstream = JSON.parse(fs.readFileSync(path.join(root, '.cache', 'idrive-kit', 'apps', 'redline', 'app.json'), 'utf8'));
+    assert.equal(upstream.signals[GEARBOX].statusGearboxDrive, 's');
+    assert.equal(manifest.signals[GEARBOX].statusGearboxDrive, upstream.signals[GEARBOX].statusGearboxDrive,
+        'requesting a getter for an event-only field can prevent SOME/IP generation');
+    const archive = entries(path.join(root, 'dist', 'external_lights@' + manifest.version + '.tgz'));
+    const entry = archive.out.find(e => e.name === 'package/manifest.json');
+    const built = JSON.parse(archive.raw.slice(entry.at, entry.at + entry.size).toString('utf8'));
+    assert.equal(built.proxies[GEARBOX].attributes.statusGearboxDrive, 's');
+});
 
 // TAB_LAMPEN_FUNKTION as read from C:\EC-APPS\ISTA\Ecu\bdc_g11.prg on 2026-11-14 (value: the description's text).
 // ISTA's files are not in this repository; set EXTERNAL_LIGHTS_PRG to bdc_g11.prg to check against the file.
