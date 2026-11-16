@@ -192,7 +192,7 @@ test('a lost lamp reply is not replayed, and cleanup follows before a default-se
 });
 test('speed and Park telemetry produce warnings without a permissive bench fallback', async () => {
     const handlers = {}; let now = 0;
-    const v = Vehicle.watch({ signals: { async watch(iface, instance, h) { Object.assign(handlers,h); return {}; } } }, quiet, () => now);
+    const v = Vehicle.watch({ signals: { async watch(iface, instance, h) { Object.assign(handlers,h); return {}; } } }, quiet, () => now, { parkCheck: true, speedCheck: true });
     assert.match(v.reason(), /speed/);
     handlers.statusCarSpeed2({ speedVehicleCentreOfGravity: 640 });
     assert.match(v.reason(), /moving/);

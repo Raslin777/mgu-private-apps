@@ -1,4 +1,42 @@
-# External Lights 0.2.6
+# External Lights 0.2.8
+
+## Speed check switched off for testing — November 15, 2026
+
+Version 0.2.8 also switches the zero-speed check off at the owner's request,
+for testing. With the Park check already off (0.2.7), the app no longer blocks
+the Address tests **Write test** (left indicator, 0.5 s) for any vehicle
+state: it runs with no speed signal, in any selector position, and while
+moving. Stop, the diagnostic link/session checks and the lamp-off and
+default-session cleanup are unchanged.
+
+The lighting page still shows the speed warning (moving, or speed missing or
+stale); it blocks nothing. Speed and both selector signals are still shown on
+the tests page. To restore a check set `SPEED_CHECK` or `PARK_CHECK` to `true`
+in `apps/external_lights/vehicle.js` and rebuild. Not installed or run on the
+HU.
+
+66 tests: 64 pass, 2 optional checks skipped (ISTA file, HU catalog). Node
+8.16.2 and the SDK-free build pass.
+
+## 0.2.7
+
+## Park check switched off for testing — November 15, 2026
+
+Version 0.2.7 switches the Park check off at the owner's request, for testing.
+The Address tests **Write test** (left indicator, 0.5 s) now needs only a fresh
+speed sample of zero; the selector position no longer blocks it, and the
+lighting page no longer warns about Park. Missing, stale or non-zero speed
+still blocks the write test and still shows a warning.
+
+`DataPowerTrain2` and `statusGearboxDrive` are still subscribed, shown with
+their ages on the tests page and logged, so the selector signal can still be
+checked on the HU. Nothing else changed: same requests, same sessions, same
+lamps. To restore the check set `PARK_CHECK = true` in
+`apps/external_lights/vehicle.js` and rebuild. Not installed or run on the HU.
+
+65 tests: 63 pass, 2 optional checks skipped (ISTA file, HU catalog). Node
+8.16.2 and the SDK-free build pass.
+
 
 ## Park signal compatibility — November 15, 2026
 

@@ -60,7 +60,7 @@ async function check() {
     const vehicleHandlers = {};
     const vehicle = require(path.join(sim.APP,'vehicle')).watch({signals:{watch:async function(iface,instance,fields){
         Object.assign(vehicleHandlers,fields);return{};
-    }}},sim.quiet,function(){return 0;});
+    }}},sim.quiet,function(){return 0;},{parkCheck:true,speedCheck:true});
     vehicleHandlers.statusCarSpeed2({speedVehicleCentreOfGravity:0});
     vehicleHandlers.DataPowerTrain2({statusGearSelectionDrive:3});
     assert.equal(vehicle.reason(),null);

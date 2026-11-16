@@ -26,7 +26,7 @@ class Transport extends Diag {
             throw new Error('Request outside the address-test workflow');
         if (!this.p || !this.available) throw new Error('Diagnostic link unavailable');
         if (lamp && d[5] !== 0 && (!options.testAllowed || options.testAllowed()))
-            throw new Error('Address-test write requires fresh Park and zero speed');
+            throw new Error('Address-test write requires fresh zero speed');
         const result = await this.signals.call(this.p, 'sendTasuRequest', {
             sourceAddress: source, targetAddress: target, serviceID: sid, subroutineID: 0,
             udsDataLength: d.length, udsData: Buffer.from(d), deadlockTime: 0

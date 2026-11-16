@@ -1,6 +1,6 @@
 {
   "name": "mgu-external-lights",
-  "version": "0.2.6",
+  "version": "0.2.8",
   "private": true,
   "description": "Exterior lamp effects with diagnostic preflight, sessions and movement warnings",
   "scripts": {

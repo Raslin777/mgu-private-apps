@@ -107,7 +107,7 @@ test('address tests submit the chosen source, enforce a fresh parked guard for a
     const count=calls.length;
     for(const guard of [undefined,()=> 'moving',()=> 'Park unconfirmed']){
         await assert.rejects(diag.physical(0x40,0x2e,[0xd5,0x42,0,6,0,50],100,accept,
-            {testSource:0xf4,testAllowed:guard,hardTimeoutMs:300}),/fresh Park/);
+            {testSource:0xf4,testAllowed:guard,hardTimeoutMs:300}),/fresh zero speed/);
     }
     await assert.rejects(diag.physical(0x40,0x2e,[0xd5,0x42,0,7,0,50],100,accept,
         {testSource:0xf4,testAllowed:()=>null,hardTimeoutMs:300}),/outside/);

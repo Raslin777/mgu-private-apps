@@ -95,7 +95,7 @@ mgu.run({
             draw(cv, ctx.theme(), {
                 lit: LAMPS.filter((l) => player.isLit(l.key)).map((l) => l.key),
                 show: current().name, state: player.state, reason: player.reason, lamp: picked() ? picked().name : 'No available lamps',
-                warning: vehicle.reason(), speed: vehicle.speed(), rtt: player.rtt, writes: player.writes, skipped: player.skipped,
+                warning: vehicle.warning ? vehicle.warning() : vehicle.reason(), speed: vehicle.speed(), rtt: player.rtt, writes: player.writes, skipped: player.skipped,
                 failure: session.lastFailure, cleanupFailure: session.cleanupFailure,
                 exchange: session.audit && session.audit.length ? session.audit[session.audit.length-1] : null,
                 refused: player.refused.map((k) => LAMPS.find((l) => l.key === k).name), link: !!diag.p,

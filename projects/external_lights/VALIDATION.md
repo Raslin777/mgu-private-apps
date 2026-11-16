@@ -1,4 +1,38 @@
-# External Lights 0.2.6 validation — November 15, 2026
+# External Lights 0.2.8 validation — November 15, 2026
+
+Current run: 66 tests, 64 pass; the optional ISTA-file and HU-catalog checks
+are skipped. The SDK-free build and Node 8.16.2 checks pass; the built app was
+run on the offline HU stub through every button.
+
+The speed check is off as well as the Park check (`SPEED_CHECK = false`,
+`PARK_CHECK = false` in `vehicle.js`). Tests of the shipped default: nothing
+blocks with no signal, any selector value, any speed or stale speed; the write
+test runs with no signals and while moving in Neutral; Stop during the write
+still switches the lamp off and restores the default session; the lighting
+page's speed warning is still produced. Both checks' logic is unchanged and
+still tested switched on, together and speed alone.
+
+No HU connection was made. Not verified: anything on the HU, including what
+the BDC answers to the write. The app no longer prevents the write test while
+the car is moving.
+
+## Previous 0.2.7 checks
+
+Current run: 65 tests, 63 pass; the optional ISTA-file and HU-catalog checks
+are skipped. The SDK-free build and Node 8.16.2 checks pass; the built app was
+run on the offline HU stub through every button.
+
+The Park check is off (`PARK_CHECK = false` in `vehicle.js`). New tests cover
+the shipped default: zero speed alone clears the warning with no selector
+signal, with Neutral, Reverse, a gear or an invalid value; the write test runs
+in Neutral at zero speed; moving, stale or missing speed still blocks it. The
+Park logic itself is unchanged and still tested with the check switched on.
+
+No HU connection was made. Not verified: that the write test now gets past the
+app-side block on the HU (it still needs `statusCarSpeed2` delivered there and
+reading 0), and what the BDC answers to the write.
+
+## Previous 0.2.6 checks
 
 Current run: 62 tests pass; one optional HU catalog check is skipped.
 The SDK-free build and Node 8.16.2 checks pass. The latter also executes
