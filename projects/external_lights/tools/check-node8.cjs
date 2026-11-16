@@ -56,6 +56,16 @@ async function check() {
         {now:function(){return testTime;},wait:async function(ms){testTime+=ms;}});
     assert.equal(await addressTests.run('write',0xf4),true);
     assert.equal(testCalls.length,6);
+
+    const vehicleHandlers = {};
+    const vehicle = require(path.join(sim.APP,'vehicle')).watch({signals:{watch:async function(iface,instance,fields){
+        Object.assign(vehicleHandlers,fields);return{};
+    }}},sim.quiet,function(){return 0;});
+    vehicleHandlers.statusCarSpeed2({speedVehicleCentreOfGravity:0});
+    vehicleHandlers.DataPowerTrain2({statusGearSelectionDrive:3});
+    assert.equal(vehicle.reason(),null);
+    vehicleHandlers.DataPowerTrain2({statusGearSelectionDrive:1});
+    assert.ok(vehicle.reason());
     assert.ok(testCalls.every(function(c){return c.source===0xf4;}));
     assert.deepEqual(testCalls[3].data,[0xd5,0x42,0,6,0,50]);
     stationary='moving';

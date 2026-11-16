@@ -102,12 +102,13 @@ function lines(test) {
         return all;
     },[]);
 }
-function draw(cv,theme,test,source) {
+function draw(cv,theme,test,source,telemetry) {
     cv.clear(theme.bg);
     cv.text('Diagnostic address tests — requested source ' + address(source),44,46,30,theme.text,{font:'bold'});
     cv.text('Read: D542 data. Write: left indicator for 0.5 s; fresh Park and zero speed required.',44,84,22,theme.dim);
     const status = test.status.length > 200 ? test.status.slice(0,197) + '...' : test.status;
     for(let at=0;at<status.length;at+=100) cv.text(status.slice(at,at+100),44,120+Math.floor(at/100)*24,22,theme.warn);
+    if (telemetry) cv.text(telemetry,44,173,17,theme.dim);
     const all = lines(test), page=13;
     test.offset = Math.min(test.offset,Math.max(0,all.length-page));
     const end = Math.max(0,all.length-test.offset), start=Math.max(0,end-page);

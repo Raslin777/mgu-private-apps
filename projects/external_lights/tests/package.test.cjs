@@ -23,6 +23,9 @@ test('event-only gearbox permission matches the pinned upstream manifest and the
     const entry = archive.out.find(e => e.name === 'package/manifest.json');
     const built = JSON.parse(archive.raw.slice(entry.at, entry.at + entry.size).toString('utf8'));
     assert.equal(built.proxies[GEARBOX].attributes.statusGearboxDrive, 's');
+    const vitals=JSON.parse(fs.readFileSync(path.join(root,'.cache','idrive-kit','apps','car_vitals','app.json'),'utf8'));
+    assert.equal(manifest.signals[GEARBOX].DataPowerTrain2,vitals.signals[GEARBOX].DataPowerTrain2);
+    assert.equal(built.proxies[GEARBOX].attributes.DataPowerTrain2,'s');
 });
 
 // TAB_LAMPEN_FUNKTION as read from C:\EC-APPS\ISTA\Ecu\bdc_g11.prg on 2026-11-14 (value: the description's text).

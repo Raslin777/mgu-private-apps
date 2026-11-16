@@ -2,7 +2,7 @@
   "id": "external_lights",
   "title": "External Lights",
   "description": "Exterior lamp effects with diagnostic session checks. Movement warning only. Not car-tested.",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "vendor": "custom",
   "loggingId": "EXLT",
   "iconGlyph": "EL",
@@ -53,7 +53,8 @@
       "statusCarSpeed2": "rs"
     },
     "de.bmw.infrastructure.VehicleInformation": {
-      "statusGearboxDrive": "s"
+      "statusGearboxDrive": "s",
+      "DataPowerTrain2": "s"
     }
   },
   "settings": [

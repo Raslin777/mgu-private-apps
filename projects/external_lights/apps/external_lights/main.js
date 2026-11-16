@@ -89,7 +89,7 @@ mgu.run({
             updateButtons();
             const cv = ctx.canvas(1600, 520);
             if (page === 'tests') {
-                Address.draw(cv,ctx.theme(),tests,tests.busy ? tests.source : testSource());
+                Address.draw(cv,ctx.theme(),tests,tests.busy ? tests.source : testSource(),vehicle.summary ? vehicle.summary() : null);
                 return ui.image('MAIN_GFX',cv);
             }
             draw(cv, ctx.theme(), {

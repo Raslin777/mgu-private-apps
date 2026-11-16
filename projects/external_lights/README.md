@@ -1,4 +1,28 @@
-# External Lights 0.2.5
+# External Lights 0.2.6
+
+## Park signal compatibility — November 15, 2026
+
+Version 0.2.6 subscribes to the documented `DataPowerTrain2` selector signal
+as well as `statusGearboxDrive`. The pinned app kit notes that some cars never
+publish the older gearbox event. That missing input could leave the previous
+app unable to confirm Park even while the cluster displayed P.
+
+The enums are decoded separately: gearbox stage P is 1, while powertrain
+selection P is 3 (powertrain 1 is Neutral). Only an explicit fresh P, with
+fresh zero speed and no conflicting fresh selector value, confirms Park.
+Neutral, N/P ambiguity, invalid values, missing/stale data and movement remain
+blocked for address-test writes. This is a signal compatibility change; the
+write safeguard has not been removed.
+
+The tests page now displays both raw selector values, their ages, and the
+speed sample/age so an unavailable signal is distinguishable from an actual
+non-P selection. Selector-value changes are logged. This fallback still needs
+verification on the owner's HU; the screenshot alone does not prove which
+selector event is absent. The screenshot's `62 D5 42 ...` is a successful read,
+not a write result; its write attempt was stopped by the app's Park check.
+
+62 tests pass, one optional HU catalog check is skipped, and Node 8.16.2 and
+the SDK-free build pass.
 
 ## Address tests navigation correction — November 15, 2026
 

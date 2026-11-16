@@ -1,4 +1,22 @@
-# External Lights 0.2.5 validation — November 15, 2026
+# External Lights 0.2.6 validation — November 15, 2026
+
+Current run: 62 tests pass; one optional HU catalog check is skipped.
+The SDK-free build and Node 8.16.2 checks pass. The latter also executes
+the powertrain selector's numeric Park/Neutral cases.
+
+The additional event-only permission is checked against the pinned upstream
+Car Vitals manifest and against the generated install manifest. Regression
+coverage checks Park from DataPowerTrain2 without any gearbox-stage event,
+both enum mappings, fresh conflicting signals, stale Park, missing/invalid/
+nonzero speed, unknown/N-or-P selections, sample-age display, and the complete
+guarded indicator test using the fallback. Fresh Neutral must send no request.
+
+The telemetry line was rendered with simulated values and visually checked.
+No HU connection was made. The owner's screenshot confirms a positive D542
+read and an app-side Park block; it does not identify which selector signal
+the HU actually supplies. That still needs checking using the new raw inputs.
+
+## Previous 0.2.5 checks
 
 Current run: 57 tests pass and one optional HU catalog check is skipped.
 The SDK-free build and Node 8.16.2 checks pass. The package now contains a
