@@ -41,37 +41,57 @@ mgu.run({
         const current = () => Shows.show(showKey, { glare: glare() });
         const guard = (name, fn) => () => { try { return fn(); } catch (e) { log.warn(name + ': ' + (e && e.message || e)); } };
         const lightAction = fn => () => { if (tests.busy) { tests.status = 'Wait for the address test to finish'; return; } return fn(); };
+        // The pinned renderer owns the first canvas only. Both pages must use
+        // MAIN_GFX and one loop; opening another RHMI canvas breaks GPU routing.
+        let page = 'lights', buttonKey = null, redraw = null;
+        const lightingBusy = () => player.state !== 'idle' || player.closing || player.prepared || session.attempted;
+        const updateButtons = () => {
+            const stop = tests.busy ? 'Stop test' : lightingBusy() ? 'Stop show' : 'Later';
+            const key = page + (page === 'tests' ? ':' + stop : '');
+            if (key === buttonKey) return;
+            buttonKey = key;
+            const labels = page === 'tests' ? ['Read test',stop,'Next address','Earlier','Write test','Back'] :
+                ['Start','Stop','Next show','Next lamp','Flash lamp','Address tests'];
+            if (typeof ui.text === 'function') Promise.all(['BTN_START','BTN_STOP','BTN_SHOW','BTN_LAMP','BTN_FLASH','BTN_TESTS']
+                .map((id,i) => ui.text(id,labels[i]))).catch(e => log.warn('button labels: ' + e));
+        };
+        const testAction = kind => { const result = tests.run(kind,testSource()); updateButtons(); return result; };
 
-        ui.onClick('BTN_START', guard('start', lightAction(() => player.play(current()))));
-        ui.onClick('BTN_STOP', guard('stop', () => { tests.stop(); player.stop('Stopped'); }));
+        ui.onClick('BTN_START', guard('start', () => page === 'tests' ? testAction('read') : lightAction(() => player.play(current()))()));
+        ui.onClick('BTN_STOP', guard('stop', () => {
+            if (page === 'tests' && !tests.busy && !lightingBusy()) tests.scroll(-13);
+            else { tests.stop(); player.stop('Stopped'); }
+            updateButtons();
+        }));
         ui.onClick('BTN_SHOW', guard('show', () => {
+            if (page === 'tests') {
+                if (!tests.busy) settings.set('testSource',Address.SOURCES[(Address.SOURCES.indexOf(testSource())+1)%Address.SOURCES.length].toString(16).toUpperCase());
+                return;
+            }
             showKey = Shows.next(showKey); settings.set('show', showKey);
             if (!tests.busy && player.state === 'playing' && !player.show.once) player.play(current());
         }));
-        ui.onClick('BTN_LAMP', guard('lamp', () => { const count = lamps().length; lampAt = count ? (lampAt + 1) % count : 0; }));
-        ui.onClick('BTN_FLASH', guard('flash', lightAction(() => { const selected = picked(); if (selected) player.flash(selected.key, 1000); })));
-        ui.onClick('BTN_TESTS', () => ui.open('DIAGNOSTICS'));
-        ui.onClick('BTN_TEST_BACK', () => ui.open('MAIN'));
-        ui.onClick('BTN_TEST_SOURCE', () => {
-            if (!tests.busy) settings.set('testSource',Address.SOURCES[(Address.SOURCES.indexOf(testSource())+1)%Address.SOURCES.length].toString(16).toUpperCase());
+        ui.onClick('BTN_LAMP', guard('lamp', () => {
+            if (page === 'tests') { tests.scroll(13); return; }
+            const count = lamps().length; lampAt = count ? (lampAt + 1) % count : 0;
+        }));
+        ui.onClick('BTN_FLASH', guard('flash', () => page === 'tests' ? testAction('write') :
+            lightAction(() => { const selected = picked(); if (selected) player.flash(selected.key, 1000); })()));
+        ui.onClick('BTN_TESTS', () => {
+            page = page === 'lights' ? 'tests' : 'lights'; updateButtons();
+            if (redraw && redraw.kick) redraw.kick();
         });
-        ui.onClick('BTN_TEST_READ', () => tests.run('read',testSource()));
-        ui.onClick('BTN_TEST_WRITE', () => tests.run('write',testSource()));
-        ui.onClick('BTN_TEST_STOP', () => tests.stop());
-        ui.onClick('BTN_TEST_EARLIER', () => tests.scroll(13));
-        ui.onClick('BTN_TEST_LATER', () => tests.scroll(-13));
 
         // Shutdown cleanup is best effort within the platform's short grace period.
         if (ctx.app && ctx.app.on) ctx.app.on('shutdown', () => { tests.stop(); player.stop('App closed'); vehicle.close(); });
 
-        ctx.loop('DIAGNOSTICS',4,() => {
-            const cv = ctx.canvas(1600,520);
-            Address.draw(cv,ctx.theme(),tests,tests.busy ? tests.source : testSource());
-            return ui.image('DIAGNOSTICS_GFX',cv);
-        });
-
-        ctx.loop('MAIN', 4, () => {
+        redraw = ctx.loop('MAIN', 4, () => {
+            updateButtons();
             const cv = ctx.canvas(1600, 520);
+            if (page === 'tests') {
+                Address.draw(cv,ctx.theme(),tests,tests.busy ? tests.source : testSource());
+                return ui.image('MAIN_GFX',cv);
+            }
             draw(cv, ctx.theme(), {
                 lit: LAMPS.filter((l) => player.isLit(l.key)).map((l) => l.key),
                 show: current().name, state: player.state, reason: player.reason, lamp: picked() ? picked().name : 'No available lamps',

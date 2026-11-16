@@ -1,4 +1,24 @@
-# External Lights 0.2.4
+# External Lights 0.2.5
+
+## Address tests navigation correction — November 15, 2026
+
+Version 0.2.5 fixes an integration mistake in 0.2.4: the pinned renderer owns
+only the first canvas screen, while Address tests was added as a second
+canvas. Address tests now draws inside MAIN_GFX on the same single rendering
+loop as the lighting view. Opening it and using Back no longer opens another
+RHMI canvas or leaves a competing page rendering path.
+
+The footer changes with the view: **Read test**, **Next address**, **Earlier**,
+**Write test**, and **Back**. The second button shows **Stop test** during a
+test, **Stop show** if lighting still needs stopping, or **Later** when idle.
+Returning restores the normal lighting controls. Source selections and reply
+history are preserved across Back/reopen. Diagnostic requests and write-test
+Park/speed checks are unchanged.
+
+57 tests pass; one optional HU catalog check is skipped. Node 8.16.2 and the
+SDK-free build pass. The navigation regression holds the tests view across
+150 redraws and repeated Back/reopen cycles and checks that only MAIN_GFX is
+used. Offline previews were inspected; the fix still needs HU confirmation.
 
 ## Diagnostic address tests — November 15, 2026
 

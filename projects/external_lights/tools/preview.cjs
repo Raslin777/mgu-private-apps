@@ -19,15 +19,17 @@ const hu = headUnit(stage, {
 });
 hu.start();
 setTimeout(async () => {
-    const buttons = ['BTN_SHOW', 'BTN_LAMP', 'BTN_FLASH', 'BTN_START', 'BTN_STOP',
-        'BTN_TESTS','BTN_TEST_SOURCE','BTN_TEST_READ','BTN_TEST_WRITE','BTN_TEST_EARLIER','BTN_TEST_LATER','BTN_TEST_BACK'];
-    for (const b of buttons) {
+    const actions = [['show','BTN_SHOW'],['lamp','BTN_LAMP'],['flash','BTN_FLASH'],['start','BTN_START'],['stop','BTN_STOP'],
+        ['tests','BTN_TESTS'],['test_source','BTN_SHOW'],['test_read','BTN_START'],['test_write','BTN_FLASH'],
+        ['test_earlier','BTN_LAMP'],['test_later','BTN_STOP'],['test_back','BTN_TESTS'],['test_reopen','BTN_TESTS'],['test_back_again','BTN_TESTS']];
+    for (const action of actions) {
+        const b = action[1];
         if (!hu.handlers[b]) { console.error('no handler for ' + b); process.exit(1); }
-        name = b.slice(4).toLowerCase();
+        name = action[0];
         await hu.handlers[b]({ row: 0 });
         await new Promise((r) => setTimeout(r, 300));
         await hu.loopFn();
     }
-    console.log('Preview images (open, ' + buttons.map((b) => b.slice(4).toLowerCase()).join(', ') + '): ' + out);
+    console.log('Preview images (open, ' + actions.map(a => a[0]).join(', ') + '): ' + out);
     process.exit(0);
 }, 1500);

@@ -40,9 +40,7 @@ test('manifest: its own id, the version of package.json, not started with the pl
     assert.equal(manifest.autostart, undefined, 'the lamps are only driven while the app is open');
     assert.match(manifest.description, /Movement warning only/);
     assert.deepEqual(manifest.screens[0].buttons.map((b) => b[0]), ['BTN_START', 'BTN_STOP', 'BTN_SHOW', 'BTN_LAMP', 'BTN_FLASH', 'BTN_TESTS']);
-    const diagnostic = manifest.screens.find(s => s.name === 'DIAGNOSTICS');
-    assert.ok(diagnostic.buttons.some(b => b[0] === 'BTN_TEST_READ'));
-    assert.ok(diagnostic.buttons.some(b => b[0] === 'BTN_TEST_WRITE'));
+    assert.deepEqual(manifest.screens.filter(s => s.kind === 'canvas').map(s => s.name),['MAIN']);
     assert.deepEqual(manifest.settings.find(s => s.key === 'testSource').options.map(o => o[0]),['F2','F1','F4','F5']);
     assert.equal(manifest.settings.find((s) => s.key === 'glare').default, false);
 });
@@ -123,6 +121,11 @@ test('the Store package: the app\'s files as in apps/, the kit\'s licence, no SD
     ['package/package.json', 'package/manifest.json', 'package/LICENSE-app-kit', 'package/NOTICE.md', 'package/javascript/app.js',
         'package/javascript/kit/diag.js', 'package/javascript/kit/parked.js'].forEach((n) => assert.ok(all.includes(n), n));
     assert.ok(!all.some((n) => /oap-sdk|node_modules/.test(n)), 'the SDK is not packaged');
+    const specEntry = out.find(e => e.name === 'package/javascript/kit/app-spec.json');
+    assert.ok(specEntry, 'packaged app spec exists');
+    const spec = JSON.parse(raw.slice(specEntry.at, specEntry.at+specEntry.size).toString('utf8'));
+    assert.deepEqual(spec.screens.filter(s => s.kind === 'canvas').map(s => s.name),['MAIN'],
+        'the renderer must not be given a second diagnostics canvas');
     ['address-tests.js', 'lamps.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js'].forEach((f) => {
         const e = out.find((x) => x.name === 'package/javascript/' + f);
         assert.ok(e, f);

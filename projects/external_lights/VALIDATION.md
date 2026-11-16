@@ -1,4 +1,24 @@
-# External Lights 0.2.4 validation — November 15, 2026
+# External Lights 0.2.5 validation — November 15, 2026
+
+Current run: 57 tests pass and one optional HU catalog check is skipped.
+The SDK-free build and Node 8.16.2 checks pass. The package now contains a
+single canvas (MAIN) plus SETTINGS, rather than a second diagnostics canvas.
+
+The renderer's single-canvas behavior is checked against the pinned Display
+implementation. A navigation regression exercises 150 test-page redraws,
+five Back/reopen cycles, footer label restoration, Read/Write source selection,
+Earlier/Later scrolling, the busy Stop test label and lighting activation
+blocking while a test is active. It asserts one loop, one image component,
+and no RHMI openState calls for page navigation. The packaged app-spec is
+also checked to prevent accidentally shipping the previous second canvas.
+
+The expanded offline preview navigates into tests, through its controls,
+back to lighting, and into tests again; the rendered pages were inspected.
+The former preview did not exercise the GPU renderer's first-canvas/visibility
+restriction. No live HU check was performed, so vehicle confirmation remains
+outstanding.
+
+## Previous 0.2.4 checks
 
 Current run: 56 tests pass and one optional HU catalog check is skipped.
 Nine app JavaScript files compile under Node 8.16.2. The address-test
