@@ -117,3 +117,61 @@ test('address tests submit the chosen source, enforce a fresh parked guard for a
     assert.equal(calls[calls.length-1].sourceAddress,0xf4);
     await request(diag);assert.equal(calls[calls.length-1].sourceAddress,0xf2);idle(diag);
 });
+
+test('session and keepalive use the separate TASU subroutine field on every supported source', async () => {
+    const calls = [];
+    const diag = new Transport({ async call(proxy, method, args) {
+        calls.push(args);
+        assert.equal(method, 'sendTasuRequest');
+        assert.equal(args.udsDataLength, 0);
+        assert.deepEqual(Array.from(args.udsData), []);
+        const reply = [args.serviceID + 0x40, args.subroutineID];
+        setImmediate(() => diag._onResponse(frame(0x40, reply)));
+        return 'NO_ERROR';
+    } }, quiet);
+    diag.p = {}; diag.available = true;
+    for (const source of [undefined, 0xf2, 0xf1, 0xf4, 0xf5]) {
+        for (const [sid, sub] of [[0x10, 3], [0x3e, 0], [0x10, 1]]) {
+            const options = { maxRetries: 0, hardTimeoutMs: 300 };
+            if (source !== undefined) options.testSource = source;
+            const reply = await diag.physical(0x40, sid, [sub], 100, kit.replyTo(sid, [sub]), options);
+            assert.deepEqual(reply, [sid + 0x40, sub]);
+            const args = calls[calls.length - 1];
+            assert.equal(args.sourceAddress, source === undefined ? 0xf2 : source);
+            assert.equal(args.subroutineID, sub);
+            assert.equal(diag.lastExchange.request, sid.toString(16) + ' ' + sub.toString(16).padStart(2, '0'));
+            assert.equal(diag.lastExchange.tasuRequest.subroutineID, sub);
+            assert.equal(diag.lastExchange.tasuRequest.udsDataLength, 0);
+            idle(diag);
+        }
+    }
+    assert.equal(calls.length, 15, 'one send per request, without encoding retries');
+    for (const [sid, data] of [[0x10, []], [0x10, [3, 0]], [0x10, [2]], [0x3e, [1]]]) {
+        await assert.rejects(diag.physical(0x40, sid, data, 100, () => true,
+            { maxRetries: 0, hardTimeoutMs: 300 }), /outside/);
+        idle(diag);
+    }
+    assert.equal(calls.length, 15);
+});
+
+test('a real Transport session refusal preserves both raw replies and never sends a lamp write', async () => {
+    const { AddressTests, lines } = require('../apps/external_lights/address-tests');
+    const calls = [];
+    const diag = new Transport({ async call(proxy, method, args) {
+        calls.push(args);
+        const reply = args.serviceID === 0x22 ? [0x62].concat(Array.from(args.udsData), [1]) : [0x7f, 0x10, 0x13];
+        setImmediate(() => diag._onResponse(frame(0x40, reply)));
+        return 'NO_ERROR';
+    } }, quiet);
+    diag.p = {}; diag.available = true;
+    const checks = new AddressTests(diag, quiet, () => null, () => null);
+    assert.equal(await checks.run('write', 0xf4), false);
+    assert.deepEqual(calls.map(c => c.serviceID), [0x22, 0x22, 0x10, 0x10]);
+    assert.deepEqual(calls.slice(2).map(c => c.subroutineID), [3, 1]);
+    assert.ok(calls.every(c => c.sourceAddress === 0xf4));
+    assert.match(checks.status, /Extended session setup:.*NRC 13.*lamp write not sent.*cleanup failed/);
+    assert.equal(checks.history[2].rx, '7F 10 13');
+    assert.equal(checks.history[3].rx, '7F 10 13');
+    assert.ok(checks.history.every(row => row.raw.length === 1));
+    assert.ok(lines(checks).some(line => line === 'TASU API: SID 10 sub 03 dataLen 0 data (empty)'));
+});

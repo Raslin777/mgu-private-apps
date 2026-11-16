@@ -1,4 +1,30 @@
-# External Lights 0.2.8 validation — November 15, 2026
+# External Lights 0.2.9 validation — November 15, 2026
+
+The supplied HU screenshot confirms that F4 identity and D542 reads succeeded,
+but extended-session setup and default cleanup returned `7F 10 13`. No lamp
+write is present in this attempt. The screenshot does not capture outgoing
+vehicle-bus bytes and does not establish the cause of the length/format error.
+
+Candidate change: session and keepalive requests use TASU's separate UInt8
+subroutineID, an empty data buffer and data length zero. The local HU SOME/IP
+schema confirms the API shape, not the native transport's encoding semantics.
+The existing BMW reference package uses subroutineID zero for its generic
+jobs; it does not establish the correct session-control mapping. HU confirmation
+of `50 03` and `50 01` remains required. No live ECU requests were made here.
+
+Regression coverage exercises the real app Transport on normal F2 and each
+test source for setup/keepalive/cleanup, checking every API field and that only
+one call is made. It also reproduces session/cleanup NRC 13, retains both raw
+replies, verifies outgoing API fields are available on screen, and proves no
+lamp write is sent after failed session setup. Node 8 executes the encoding
+path as well as compiling the shipped modules.
+
+Offline result: 68 tests, 66 passed, two optional ISTA/HU-catalog checks skipped;
+Node 8.16.2 compatibility passed; SDK-free 0.2.9 package built and its source
+content matched the app files in the package tests. These checks do not emulate
+the native TASU serializer or prove that the BDC will accept this encoding.
+
+## Previous 0.2.8 validation
 
 Current run: 66 tests, 64 pass; the optional ISTA-file and HU-catalog checks
 are skipped. The SDK-free build and Node 8.16.2 checks pass; the built app was

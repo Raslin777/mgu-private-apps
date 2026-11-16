@@ -33,8 +33,10 @@ class AddressTests {
             error = e; row.rx = 'No UDS reply'; row.origin = 'TASU'; row.error = String(e.message || e); throw e;
         } finally {
             const exchange = this.diag.lastExchange;
-            if (exchange && exchange.source === this.source && exchange.request.toUpperCase() === row.tx)
+            if (exchange && exchange.source === this.source && exchange.request.toUpperCase() === row.tx) {
                 row.raw = exchange.rawTasu.slice();
+                row.tasuRequest = exchange.tasuRequest;
+            }
             if (!row.raw.length && error && error.rawTasu) row.raw = [error.rawTasu];
             this.log.info('external lights address test: ' + JSON.stringify(row));
         }
@@ -72,7 +74,12 @@ class AddressTests {
                     await this.wait(Math.min(40,until-this.now()));
                 }
             }
-        } catch (e) { this.status = String(e.message || e); ok = false; }
+        } catch (e) {
+            const failure = e.detail;
+            this.status = (failure ? failure.phase + ': ' : '') + String(e.message || e);
+            if (failure && failure.phase === 'Extended session setup') this.status += '; lamp write not sent';
+            ok = false;
+        }
         finally {
             if (kind === 'write') {
                 if (attemptedLamp) {
@@ -93,6 +100,11 @@ function lines(test) {
     const out = [];
     test.history.forEach(row => {
         out.push('Source ' + row.source + ' -> BDC 40   TX: ' + row.tx);
+        if (row.tasuRequest) {
+            const t = row.tasuRequest;
+            out.push('TASU API: SID ' + address(t.serviceID) + ' sub ' + address(t.subroutineID) +
+                ' dataLen ' + t.udsDataLength + ' data ' + (t.udsData.toUpperCase() || '(empty)'));
+        }
         out.push((row.origin || 'Reply') + ' RX: ' + row.rx);
         if (row.error) out.push(row.error);
         row.raw.forEach(raw => out.push('TASU bytes: ' + raw.toUpperCase()));

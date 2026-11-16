@@ -1,4 +1,31 @@
-# External Lights 0.2.8
+# External Lights 0.2.9
+
+## Session request framing candidate — November 15, 2026
+
+An HU screenshot shows successful `22 F150` and `22 D542` reads from requested
+source F4, followed by `7F 10 13` for both extended-session setup and default-
+session cleanup. This attempt never reached the lamp write. The screenshot
+also shows a fresh powertrain Park value and zero speed.
+
+The transport now submits session control and tester-present subfunctions
+through TASU's separate UInt8 `subroutineID`, with empty `udsData` and length
+zero: session setup uses SID 10 / sub 03; cleanup uses SID 10 / sub 01;
+keepalive uses SID 3E / sub 00. This applies to normal F2 and address tests.
+Read and lamp-write payloads are unchanged. There is no automatic fallback,
+padding, alternate-source retry or permission inference from a successful read.
+
+**This is a candidate fix, not a confirmed on-car encoding.** The local HU
+schema verifies these API fields exist but does not specify their service-
+specific encoding. The previous TX display describes intended UDS bytes, not
+captured vehicle-bus traffic, so it cannot prove what malformed bytes caused
+NRC 13. The tests page now includes outgoing TASU API fields as well as all
+raw replies. Session refusal identifies its phase and says the lamp write was
+not sent. A positive `50 03` is still required before any lamp command.
+
+Verify setup/cleanup on the HU while parked. No firmware condition, gateway
+filter or security requirement has been bypassed or established by this change.
+
+## 0.2.8
 
 ## Speed check switched off for testing — November 15, 2026
 

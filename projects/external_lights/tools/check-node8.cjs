@@ -45,6 +45,25 @@ async function check() {
     assert.ok(rejection && rejection.origin === 'tasu' && rejection.transportCode === 0x22);
     assert.equal(transport.listenerCount('frame'), 0);
 
+    const encodedCalls = [];
+    const encoded = new transportModule.exports.Transport({ call: async function (proxy, method, args) {
+        encodedCalls.push(args);
+        return 'NO_ERROR';
+    } }, sim.quiet);
+    encoded.p = {}; encoded.available = true;
+    for (const source of [null, 0xf2, 0xf1, 0xf4, 0xf5]) {
+        for (const operation of [[0x10, 3], [0x3e, 0], [0x10, 1]]) {
+            const options = source === null ? { maxRetries: 0 } : { testSource: source, maxRetries: 0 };
+            await encoded.send(0x40, operation[0], [operation[1]], options);
+            const sent = encodedCalls[encodedCalls.length - 1];
+            assert.equal(sent.sourceAddress, source === null ? 0xf2 : source);
+            assert.equal(sent.subroutineID, operation[1]);
+            assert.equal(sent.udsDataLength, 0);
+            assert.equal(sent.udsData.length, 0);
+        }
+    }
+    assert.equal(encodedCalls.length, 15);
+
     const AddressTests = require(path.join(sim.APP,'address-tests')).AddressTests;
     let testTime = 0, stationary = null;
     const testCalls = [];

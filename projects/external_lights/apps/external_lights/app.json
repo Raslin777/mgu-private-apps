@@ -2,7 +2,7 @@
   "id": "external_lights",
   "title": "External Lights",
   "description": "Exterior lamp effects with diagnostic session checks. Movement warning only. Not car-tested.",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "vendor": "custom",
   "loggingId": "EXLT",
   "iconGlyph": "EL",
