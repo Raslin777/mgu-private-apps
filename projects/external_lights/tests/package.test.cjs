@@ -87,7 +87,7 @@ test('ISTA\'s description file itself', { skip: !prg && 'set EXTERNAL_LIGHTS_PRG
 
 test('sources: diagnostic access is confined to the player and session controller', () => {
     const files = fs.readdirSync(app).filter((f) => f.endsWith('.js'));
-    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'vehicle.js', 'view.js']);
+    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js']);
     let calls = [];
     files.forEach((f) => {
         const s = fs.readFileSync(path.join(app, f), 'utf8');
@@ -119,7 +119,7 @@ test('the Store package: the app\'s files as in apps/, the kit\'s licence, no SD
     ['package/package.json', 'package/manifest.json', 'package/LICENSE-app-kit', 'package/NOTICE.md', 'package/javascript/app.js',
         'package/javascript/kit/diag.js', 'package/javascript/kit/parked.js'].forEach((n) => assert.ok(all.includes(n), n));
     assert.ok(!all.some((n) => /oap-sdk|node_modules/.test(n)), 'the SDK is not packaged');
-    ['lamps.js', 'player.js', 'shows.js', 'view.js'].forEach((f) => {
+    ['lamps.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js'].forEach((f) => {
         const e = out.find((x) => x.name === 'package/javascript/' + f);
         assert.ok(e, f);
         assert.ok(raw.slice(e.at, e.at + e.size).equals(fs.readFileSync(path.join(app, f))), f + ' is the file in apps/ (build again)');

@@ -23,18 +23,31 @@ class Session {
         this.entered = false; this.attempted = false; this.last = 0; this.conflictUntil = 0;
         this.audit = []; this.cleanupFailed = false;
         this.lastFailure = null; this.cleanupFailure = null;
+        this.pending = null; this.invalidated = null; this.extendedReply = null;
         if (typeof diag.on === 'function') diag.on('frame', f => {
             const u = f.uds || [];
+            if (f.ecu === BDC && this.entered && u[0] === 0x50 && u.length >= 2 &&
+                !(this.pending && this.pending.sid === 0x10 && this.pending.data[0] === u[1])) {
+                this.entered = false;
+                this.invalidated = 'BDC session changed by another diagnostic client; stop other diagnostic apps';
+            }
             // Other BDC DIDs include Better Lighting's ambient reads/writes.
             if (f.ecu === BDC && (u[0] === 0x62 || u[0] === 0x6e) &&
                 !((u[1] === 0xd5 && u[2] === 0x42) || (u[0] === 0x62 && u[1] === 0xf1 && u[2] === 0x50))) {
                 this.conflictUntil = this.now() + 5000;
             }
         });
+        if (typeof diag.on === 'function') diag.on('available', available => {
+            if (!available && this.entered) {
+                this.entered = false;
+                this.invalidated = 'Diagnostic link disconnected; start again to confirm session 03';
+            }
+        });
     }
     reason() {
         if (this.cancelled) return 'Stopped';
         if (!this.diag.p || this.diag.available !== true) return 'Diagnostic link unavailable';
+        if (this.invalidated) return this.invalidated;
         if (this.now() < this.conflictUntil) return 'Other BDC activity: stop Better Lighting and other diagnostic apps';
         return this.allowed();
     }
@@ -52,19 +65,27 @@ class Session {
         const start = this.now();
         const echoLength = sid === 0x22 || sid === 0x2e ? 2 : 1;
         const accept = u => !!u && ((u.length >= 1 + echoLength && u[0] === sid + 0x40 && data.slice(0, echoLength).every((b, i) => u[i + 1] === b)) || (u.length >= 3 && u[0] === 0x7f && u[1] === sid));
-        let reply = null, error = null;
+        let reply = null, error = null, transportFailure = null;
+        this.pending = { sid: sid, data: data };
         try { reply = await this.diag.physical(BDC, sid, data, 1000, accept,
             { maxRetries: 0, callTimeoutMs: 1200, pendingTimeoutMs: 1000, hardTimeoutMs: 2000 }); }
-        catch (e) { error = String(e.message || e); }
+        catch (e) { error = String(e.message || e); transportFailure = e; }
+        finally { this.pending = null; }
         this.last = this.now();
         const record = { ecu: '40', phase: phase(sid, data, cleanup), request: hex([sid].concat(data)), reply: hex(reply), ms: this.last - start, error: error, cleanup: !!cleanup };
+        const exchange = this.diag.lastExchange;
+        if (exchange && exchange.target === BDC && exchange.request === record.request) record.transport = exchange;
+        record.origin = transportFailure && transportFailure.origin || (reply ? 'ecu' : 'timeout');
+        record.session03 = this.entered;
         this.audit.push(record); if (this.audit.length > 100) this.audit.shift();
         this.log.info('external lights: ' + JSON.stringify(record));
         if (!reply || !accept(reply) || reply[0] === 0x7f) {
             const nrc = reply && accept(reply) && reply[0] === 0x7f ? reply[2] : null;
             const message = error || (!reply ? 'No answer from the body controller' : nrc !== null ?
                 (NRC[nrc] || 'Controller rejected request') + ' (NRC ' + hex([nrc]).toUpperCase() + ')' : 'Unexpected controller reply');
-            const detail = Object.assign({}, record, { nrc: nrc, message: message });
+            const hint = nrc === 0x22 ? (this.entered ? 'Session 03 confirmed; ECU prerequisite unknown' : 'Session 03 not confirmed; prerequisite unknown') : null;
+            const detail = Object.assign({}, record, { nrc: nrc, message: message, hint: hint,
+                transportCode: transportFailure && transportFailure.transportCode != null ? transportFailure.transportCode : null });
             if (cleanup) this.cleanupFailure = detail;
             else this.lastFailure = detail;
             const failure = new Error(message);
@@ -74,6 +95,7 @@ class Session {
         return reply;
     }
     async open() {
+        this.entered = false; this.invalidated = null; this.extendedReply = null;
         this.cleanupFailed = false;
         this.lastFailure = null; this.cleanupFailure = null;
         const id = await this.request(0x22, [0xf1, 0x50]);
@@ -82,7 +104,7 @@ class Session {
         if (functions.length <= 3) throw new Error('D542 read capability was not confirmed');
         // Even a lost session reply may mean it entered: cleanup must still be attempted.
         this.attempted = true;
-        await this.request(0x10, [0x03]);
+        this.extendedReply = await this.request(0x10, [0x03]);
         this.entered = true;
     }
     due() { return this.entered && this.now() - this.last >= KEEP_MS; }

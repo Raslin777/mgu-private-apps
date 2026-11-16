@@ -50,8 +50,9 @@ function draw(cv, t, s) {
     const lines = [];
     if (s.failure) {
         lines.push('Failed step: ' + s.failure.phase);
-        lines.push('ECU ' + s.failure.ecu + ' TX: ' + s.failure.request.toUpperCase());
+        lines.push((s.failure.origin === 'tasu' ? 'TASU TX: ' : 'ECU ' + s.failure.ecu + ' TX: ') + s.failure.request.toUpperCase());
         lines.push('RX: ' + s.failure.reply.toUpperCase());
+        if (s.failure.hint) lines.push(s.failure.hint);
     }
     if (s.cleanupFailure) lines.push('Cleanup: ' + s.cleanupFailure.message);
     if (s.speed != null) lines.push('Speed ' + Math.round(s.speed) + ' km/h');

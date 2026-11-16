@@ -21,10 +21,29 @@ const LAMPS = require(path.join(sim.APP, 'lamps')).LAMPS;
 
 async function check() {
     const files = fs.readdirSync(sim.APP).filter(function (f) { return /\.js$/.test(f); });
-    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'vehicle.js', 'view.js']);
+    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js']);
     files.forEach(function (f) {
         new vm.Script('(function (exports, require, module, __filename, __dirname) {' + fs.readFileSync(path.join(sim.APP, f), 'utf8') + '\n})', { filename: f });
     });
+
+    // Execute the transport subclass on the HU's runtime as well as compiling it.
+    const transportModule = { exports: {} };
+    const kitDiag = require(path.join(sim.APP, '..', '..', '.cache', 'idrive-kit', 'kit', 'runtime', 'diag'));
+    vm.runInNewContext(fs.readFileSync(path.join(sim.APP, 'transport.js'), 'utf8'), {
+        module: transportModule, require: function () { return kitDiag; }, Promise: Promise,
+        setTimeout: setTimeout, clearTimeout: clearTimeout
+    });
+    const transport = new transportModule.exports.Transport({}, sim.quiet);
+    transport.p = {}; transport.available = true; transport.send = async function () { return 'NO_ERROR'; };
+    const replyJob = transport.physical(0x40, 0x2e, [0xd5,0x42,0,6,0,10], 100, kitDiag.replyTo(0x2e,[0xd5,0x42]));
+    transport._onResponse({ errorCode: 0, udsResponse: Buffer.from([0,0,0,0,0,0,0x40,0,0,0x7f,0x2e,0x22]) });
+    assert.deepEqual(await replyJob, [0x7f,0x2e,0x22]);
+    const rejectJob = transport.physical(0x40,0x10,[3],100,kitDiag.replyTo(0x10,[3]));
+    transport._onResponse({ errorCode: 0, udsResponse: Buffer.from([0,0,0x7f,0,0x22]) });
+    let rejection = null;
+    try { await rejectJob; } catch (error) { rejection = error; }
+    assert.ok(rejection && rejection.origin === 'tasu' && rejection.transportCode === 0x22);
+    assert.equal(transport.listenerCount('frame'), 0);
 
     const r = sim.rig();
     const keys = Shows.keys();

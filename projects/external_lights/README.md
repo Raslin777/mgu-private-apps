@@ -1,4 +1,29 @@
-# External Lights 0.2.2
+# External Lights 0.2.3
+
+## TASU rejection and session handling — November 15, 2026
+
+Version 0.2.3 fixes the request waiter's handling of separate TASU routing
+rejections and transport errors. They are reported as TASU failures with their
+original codes, rather than being silently ignored until a timeout. An inner
+ECU reply such as `7F 2E 22` remains an ECU NRC and is not relabelled as a
+gateway-mode error. Complete matching TASU response frames are retained in
+the platform log and bounded exchange audit. Timeouts and failed method calls
+remove their listeners, and overlapping requests are rejected.
+
+The app already requires a matching `50 03` extended-session reply. It now
+retains that confirmation, invalidates it on a disconnection or observed
+session response from another client, and explains on an NRC22 screen whether
+session 03 had been confirmed. An extended session and the gateway's Tester
+Assistant routing mode are separate states; session 03 does not satisfy all
+ECU prerequisites. The particular prerequisite behind the owner's observed
+NRC22 remains unconfirmed. This update is not a verified cure for that ECU
+refusal or a firmware change.
+
+Source address F2, supported ECU requests, movement-warning behavior and the
+pinned app kit are unchanged. No gateway-mode changes, tester impersonation
+or automatic retries after NRC22 are added. Shared diagnostic events still
+cannot uniquely attribute a negative response to one client when another
+client sends the same service; stop other diagnostic apps first.
 
 ## Diagnostic error details — November 15, 2026
 
@@ -61,7 +86,7 @@ output)**. Actual illumination and restoration require a real car test.
 reference check, Node 8 compatibility check and SDK-free build pass.
 No live car connection was made. See [VALIDATION.md](VALIDATION.md).
 
-Install version 0.2.2 from this repository's Releases source in MGU Store.
+Install the packaged version from this repository's Releases source in MGU Store.
 Build with `python tools/build.py`; tests use `npm test`.
 
 The new workflow was independently implemented after reviewing public

@@ -15,7 +15,7 @@ test('the screen and lamp buttons remain usable when all selectable lamps were r
     }
     const modules = {
         './kit/mgu': { run(value) { implementation = value; } },
-        './kit/diag': { Diag: class { async init() { return this; } } },
+        './transport': { Transport: class { async init() { return this; } } },
         './vehicle': { watch() { return { reason: () => 'The car is moving', speed: () => 20, close() {} }; } },
         './session': { Session: class { reason() { return null; } } },
         './lamps': L, './shows': require('../apps/external_lights/shows'), './player': { Player },

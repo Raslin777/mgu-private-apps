@@ -48,6 +48,44 @@ test('cleanup refusal preserves the original lamp refusal and both raw responses
     assert.equal(f.session.cleanupFailure.reply, '7f 10 22');
     assert.equal(f.session.cleanupFailed, true);
 });
+
+test('session 03 confirmation is retained and NRC22 does not imply a different session will fix it', async () => {
+    const f=fixture(ready().concat([[0x7f,0x2e,0x22]]));
+    await f.session.open();
+    assert.deepEqual(f.session.extendedReply,[0x50,3]);
+    await assert.rejects(f.session.write([0xd5,0x42,0,6,0,45]));
+    assert.equal(f.session.lastFailure.session03,true);
+    assert.equal(f.session.lastFailure.origin,'ecu');
+    assert.match(f.session.lastFailure.hint,/Session 03 confirmed; ECU prerequisite unknown/);
+    assert.equal(f.sent.filter(r=>r.sid===0x2e).length,1);
+});
+
+test('a foreign session response invalidates the confirmed session and prevents another lamp write', async () => {
+    const f=fixture(ready().concat([[0x50,1]])); await f.session.open();
+    f.diag.emit('frame',{ecu:0x40,uds:[0x50,1]});
+    await assert.rejects(f.session.write([0xd5,0x42,0,6,0,45]),/session is not ready/);
+    assert.match(f.session.reason(),/another diagnostic client/);
+    assert.equal(f.sent.filter(r=>r.sid===0x2e).length,0);
+    await f.session.close(); assert.equal(f.session.cleanupFailed,false);
+});
+
+test('disconnection invalidates a session even after the link reconnects', async () => {
+    const f=fixture(ready());await f.session.open();
+    f.diag.emit('available',false);f.diag.emit('available',true);
+    assert.equal(f.session.entered,false);
+    assert.match(f.session.reason(),/start again/);
+    await assert.rejects(f.session.write([0xd5,0x42,0,6,0,45]));
+});
+
+test('a TASU rejection is distinguished from an inner ECU NRC', async () => {
+    const f=fixture([]);
+    f.diag.physical=async()=>{const error=new Error('TASU rejected diagnostic request (code 22)');
+        error.origin='tasu';error.transportCode=0x22;throw error;};
+    await assert.rejects(f.session.request(0x10,[3]));
+    assert.equal(f.session.lastFailure.origin,'tasu');
+    assert.equal(f.session.lastFailure.nrc,null);
+    assert.equal(f.session.lastFailure.transportCode,0x22);
+});
 test('timeouts and unrelated/malformed replies are not mislabeled NRC 22', async () => {
     for (const response of [null, [0x7f,0x22], [0x7f,0x2e,0x22]]) {
         const f = fixture([response]);

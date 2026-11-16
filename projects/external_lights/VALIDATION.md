@@ -1,4 +1,21 @@
-# External Lights 0.2.2 validation — November 15, 2026
+# External Lights 0.2.3 validation — November 15, 2026
+
+Current run: 45 tests pass and one optional HU catalog check is skipped.
+The local ISTA description check, SDK-free package checks and Node 8.16.2
+compatibility pass. Node 8 executes the new transport's routing-rejection
+and inner-ECU-NRC paths as well as compiling all eight app JavaScript files.
+
+New regression coverage exercises TASU header rejections, inner ECU NRC22,
+unrelated ECU/service/DID frames, failed method calls, disconnection, listener
+cleanup, hard deadlines, late method failures, overlapping requests, F2
+source-address preservation and session invalidation by foreign responses.
+The unchanged production-session simulation remains serialized.
+
+This fixes confirmed transport/session handling defects. It does not establish
+the prerequisite behind the observed ECU NRC22, and is not a verified cure for
+that refusal. No vehicle was connected and no gateway routing mode changed.
+
+## Previous 0.2.2 checks
 
 34 tests pass and one optional HU catalog check is skipped. The local ISTA
 reference-file check passes. SDK-free build and Node 8.16.2 compatibility pass.

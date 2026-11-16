@@ -7,7 +7,7 @@
  * Only the initial BDC lamp subset is selectable; no brake/headlight-controller takeover.
  */
 const mgu = require('./kit/mgu');
-const { Diag } = require('./kit/diag');
+const { Transport } = require('./transport');
 const Vehicle = require('./vehicle');
 const Session = require('./session').Session;
 const { LAMPS } = require('./lamps');
@@ -18,7 +18,7 @@ const { draw } = require('./view');
 mgu.run({
     async start(ctx) {
         const { ui, settings, log } = ctx;
-        const diag = await new Diag(ctx.signals, log).init();
+        const diag = await new Transport(ctx.signals, log).init();
         diag.quiet = true; diag.busyLog = false;
         const vehicle = Vehicle.watch(ctx, log);
         // Movement is warning-only by the owner's request. Link/session failures still stop commands.
