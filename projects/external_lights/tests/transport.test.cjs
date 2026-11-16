@@ -9,7 +9,7 @@ const { quiet } = require('./sim.cjs');
 const source = fs.readFileSync(path.join(__dirname, '../apps/external_lights/transport.js'), 'utf8');
 const moduleValue = { exports: {} };
 vm.runInNewContext(source, { require: name => { assert.equal(name, './kit/diag'); return kit; },
-    module: moduleValue, Promise, setTimeout, clearTimeout });
+    module: moduleValue, Promise, Buffer, setTimeout, clearTimeout });
 const { Transport } = moduleValue.exports;
 const accept = kit.replyTo(0x2e, [0xd5, 0x42]);
 const frame = (ecu, uds) => ({ errorCode: 'NO_ERROR', udsResponse: Buffer.from([0,0,0,0,0,0,ecu,0,0].concat(uds)) });
@@ -89,4 +89,31 @@ test('the real kit send protocol preserves F2 and sends the original request onc
     } },quiet);
     diag.p={};diag.available=true;
     assert.deepEqual(await request(diag),[0x6e,0xd5,0x42]);assert.equal(calls,1);idle(diag);
+});
+
+test('address tests submit the chosen source, enforce a fresh parked guard for activation and preserve normal F2',async()=>{
+    const calls=[];
+    const diag=new Transport({async call(proxy,method,args){
+        calls.push(args);
+        const reply=args.serviceID===0x22 ? [0x62,0xd5,0x42,1] : [0x6e,0xd5,0x42];
+        setImmediate(()=>diag._onResponse(frame(0x40,reply)));return 'NO_ERROR';
+    }},quiet);
+    diag.p={};diag.available=true;
+    for(const source of [0xf1,0xf2,0xf4,0xf5]){
+        const result=await diag.physical(0x40,0x22,[0xd5,0x42],100,kit.replyTo(0x22,[0xd5,0x42]),
+            {testSource:source,hardTimeoutMs:300});
+        assert.equal(calls[calls.length-1].sourceAddress,source);assert.deepEqual(result,[0x62,0xd5,0x42,1]);
+    }
+    const count=calls.length;
+    for(const guard of [undefined,()=> 'moving',()=> 'Park unconfirmed']){
+        await assert.rejects(diag.physical(0x40,0x2e,[0xd5,0x42,0,6,0,50],100,accept,
+            {testSource:0xf4,testAllowed:guard,hardTimeoutMs:300}),/fresh Park/);
+    }
+    await assert.rejects(diag.physical(0x40,0x2e,[0xd5,0x42,0,7,0,50],100,accept,
+        {testSource:0xf4,testAllowed:()=>null,hardTimeoutMs:300}),/outside/);
+    assert.equal(calls.length,count);
+    await diag.physical(0x40,0x2e,[0xd5,0x42,0,6,0,50],100,accept,
+        {testSource:0xf4,testAllowed:()=>null,hardTimeoutMs:300});
+    assert.equal(calls[calls.length-1].sourceAddress,0xf4);
+    await request(diag);assert.equal(calls[calls.length-1].sourceAddress,0xf2);idle(diag);
 });

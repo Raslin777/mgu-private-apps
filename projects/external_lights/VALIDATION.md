@@ -1,4 +1,24 @@
-# External Lights 0.2.3 validation — November 15, 2026
+# External Lights 0.2.4 validation — November 15, 2026
+
+Current run: 56 tests pass and one optional HU catalog check is skipped.
+Nine app JavaScript files compile under Node 8.16.2. The address-test
+controller also executes a simulated parked write workflow and a moving
+write refusal under Node 8. The SDK-free package includes the new controller
+byte-for-byte and retains the subscription-only gearbox permission.
+
+New coverage verifies selected-source reads, one 500 ms indicator write,
+lamp-off/default-session cleanup, prevention of overlapping shows/tests,
+Stop or movement during a test, missing/stale telemetry, NRC22 retention
+without fallback/replay, source F2 preservation for normal lighting,
+low-level parked-write guards, successful TX/RX display and reply paging.
+All new navigation/buttons were exercised with the offline HU stub. The
+diagnostic screen was rendered with simulated responses and visually checked.
+
+No vehicle connection was made. Alternate-source handling by the HU, the
+Park/speed telemetry on that HU, actual lamp operation and restoration still
+require verification. The original NRC22 prerequisite remains unidentified.
+
+## Previous 0.2.3 checks
 
 Current run: 45 tests pass and one optional HU catalog check is skipped.
 The local ISTA description check, SDK-free package checks and Node 8.16.2

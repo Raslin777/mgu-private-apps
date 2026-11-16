@@ -110,6 +110,14 @@ test('the screen shows phase, ECU and TX/RX, including a separate cleanup failur
     assert.ok(texts.every(t => t.y < 520));
 });
 
+test('the main screen keeps successful request and reply bytes visible',()=>{
+    const {draw}=require('../apps/external_lights/view');const texts=[];
+    draw({clear(){},roundRect(){},text(s){texts.push(s);}},{bg:'#000',text:'#fff',dim:'#888',warn:'#f00'},
+        {state:'idle',show:'test',link:true,exchange:{request:'2e d5 42 00 06 00 32',reply:'6e d5 42'}});
+    assert.ok(texts.includes('TX: 2E D5 42 00 06 00 32'));
+    assert.ok(texts.includes('RX: 6E D5 42'));
+});
+
 test('read-only identity/capability preflight precedes session, keepalive and default cleanup; no retries', async () => {
     const f = fixture(ready().concat([[0x7e, 0], [0x50, 1]]));
     await f.session.open(); f.time(2500); assert.equal(f.session.due(), true);

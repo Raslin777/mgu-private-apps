@@ -1,4 +1,34 @@
-# External Lights 0.2.3
+# External Lights 0.2.4
+
+## Diagnostic address tests — November 15, 2026
+
+Open **Address tests** from the main screen. Use **Next address** to select
+F2 (baseline), F1, F4 or F5; the same selection is available in settings.
+
+- **Read test** sends `22 D5 42` to BDC 40 from the requested source. A positive
+  read confirms a D542 reply, not permission to write or actual lamp output.
+- **Write test** performs identity/D542 preflight and confirms session 03 on
+  the requested source, attempts the left indicator for 500 ms, then sends
+  lamp-off and default-session cleanup. It requires fresh telemetry confirming
+  Park and zero speed. Missing/stale data or movement prevents activation.
+  These checks are repeated before activation; movement or Stop during the
+  test initiates cleanup. Cleanup is best effort, not a physical guarantee.
+- **Stop test** cancels further activation. **Earlier / Later** review the
+  replies, including setup and cleanup. TX, UDS RX and matching raw TASU frames
+  remain visible on both success and refusal. The latest 40 exchanges are kept
+  on this page until the app closes; full audit records go to the platform log.
+
+Lighting shows and address tests cannot run together. Stop the show and wait
+for cleanup before testing. Normal lighting commands still use F2; selecting
+a test source does not change the lighting-show source. No failed request is
+automatically retried under another address. The main lighting screen also
+shows its latest successful TX/RX, not only failures.
+
+The selected source is the address requested through the HU's TASU API.
+Whether that HU accepts or overrides another source has not been verified
+on the car. A positive command response is not measured illumination.
+56 tests pass, one optional HU catalog check is skipped, and Node 8.16.2
+compatibility and SDK-free package checks pass.
 
 ## TASU rejection and session handling — November 15, 2026
 

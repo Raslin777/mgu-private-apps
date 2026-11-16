@@ -53,6 +53,9 @@ function draw(cv, t, s) {
         lines.push((s.failure.origin === 'tasu' ? 'TASU TX: ' : 'ECU ' + s.failure.ecu + ' TX: ') + s.failure.request.toUpperCase());
         lines.push('RX: ' + s.failure.reply.toUpperCase());
         if (s.failure.hint) lines.push(s.failure.hint);
+    } else if (s.exchange) {
+        lines.push('TX: ' + s.exchange.request.toUpperCase());
+        lines.push('RX: ' + s.exchange.reply.toUpperCase());
     }
     if (s.cleanupFailure) lines.push('Cleanup: ' + s.cleanupFailure.message);
     if (s.speed != null) lines.push('Speed ' + Math.round(s.speed) + ' km/h');

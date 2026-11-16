@@ -21,7 +21,7 @@ const LAMPS = require(path.join(sim.APP, 'lamps')).LAMPS;
 
 async function check() {
     const files = fs.readdirSync(sim.APP).filter(function (f) { return /\.js$/.test(f); });
-    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js']);
+    assert.deepEqual(files.sort(), ['address-tests.js', 'lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js']);
     files.forEach(function (f) {
         new vm.Script('(function (exports, require, module, __filename, __dirname) {' + fs.readFileSync(path.join(sim.APP, f), 'utf8') + '\n})', { filename: f });
     });
@@ -31,7 +31,7 @@ async function check() {
     const kitDiag = require(path.join(sim.APP, '..', '..', '.cache', 'idrive-kit', 'kit', 'runtime', 'diag'));
     vm.runInNewContext(fs.readFileSync(path.join(sim.APP, 'transport.js'), 'utf8'), {
         module: transportModule, require: function () { return kitDiag; }, Promise: Promise,
-        setTimeout: setTimeout, clearTimeout: clearTimeout
+        setTimeout: setTimeout, clearTimeout: clearTimeout, Buffer: Buffer
     });
     const transport = new transportModule.exports.Transport({}, sim.quiet);
     transport.p = {}; transport.available = true; transport.send = async function () { return 'NO_ERROR'; };
@@ -44,6 +44,23 @@ async function check() {
     try { await rejectJob; } catch (error) { rejection = error; }
     assert.ok(rejection && rejection.origin === 'tasu' && rejection.transportCode === 0x22);
     assert.equal(transport.listenerCount('frame'), 0);
+
+    const AddressTests = require(path.join(sim.APP,'address-tests')).AddressTests;
+    let testTime = 0, stationary = null;
+    const testCalls = [];
+    const testDiag = { p:{},available:true,physical: async function(ecu,sid,data,timeout,accept,options) {
+        testCalls.push({sid:sid,data:data,source:options.testSource});
+        return sid===0x22 ? [0x62].concat(data,[1]) : sid===0x10 ? [0x50,data[0]] : [0x6e,0xd5,0x42];
+    } };
+    const addressTests = new AddressTests(testDiag,sim.quiet,function(){return null;},function(){return stationary;},
+        {now:function(){return testTime;},wait:async function(ms){testTime+=ms;}});
+    assert.equal(await addressTests.run('write',0xf4),true);
+    assert.equal(testCalls.length,6);
+    assert.ok(testCalls.every(function(c){return c.source===0xf4;}));
+    assert.deepEqual(testCalls[3].data,[0xd5,0x42,0,6,0,50]);
+    stationary='moving';
+    assert.equal(await addressTests.run('write',0xf5),false);
+    assert.equal(testCalls.length,6);
 
     const r = sim.rig();
     const keys = Shows.keys();

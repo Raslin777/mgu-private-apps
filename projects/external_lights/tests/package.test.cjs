@@ -39,7 +39,11 @@ test('manifest: its own id, the version of package.json, not started with the pl
     assert.equal(manifest.loggingId.length, 4);
     assert.equal(manifest.autostart, undefined, 'the lamps are only driven while the app is open');
     assert.match(manifest.description, /Movement warning only/);
-    assert.deepEqual(manifest.screens[0].buttons.map((b) => b[0]), ['BTN_START', 'BTN_STOP', 'BTN_SHOW', 'BTN_LAMP', 'BTN_FLASH']);
+    assert.deepEqual(manifest.screens[0].buttons.map((b) => b[0]), ['BTN_START', 'BTN_STOP', 'BTN_SHOW', 'BTN_LAMP', 'BTN_FLASH', 'BTN_TESTS']);
+    const diagnostic = manifest.screens.find(s => s.name === 'DIAGNOSTICS');
+    assert.ok(diagnostic.buttons.some(b => b[0] === 'BTN_TEST_READ'));
+    assert.ok(diagnostic.buttons.some(b => b[0] === 'BTN_TEST_WRITE'));
+    assert.deepEqual(manifest.settings.find(s => s.key === 'testSource').options.map(o => o[0]),['F2','F1','F4','F5']);
     assert.equal(manifest.settings.find((s) => s.key === 'glare').default, false);
 });
 
@@ -87,7 +91,7 @@ test('ISTA\'s description file itself', { skip: !prg && 'set EXTERNAL_LIGHTS_PRG
 
 test('sources: diagnostic access is confined to the player and session controller', () => {
     const files = fs.readdirSync(app).filter((f) => f.endsWith('.js'));
-    assert.deepEqual(files.sort(), ['lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js']);
+    assert.deepEqual(files.sort(), ['address-tests.js', 'lamps.js', 'main.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js']);
     let calls = [];
     files.forEach((f) => {
         const s = fs.readFileSync(path.join(app, f), 'utf8');
@@ -95,7 +99,7 @@ test('sources: diagnostic access is confined to the player and session controlle
         assert.ok(!/require\(['"](net|http|https|dgram|child_process|tls|fs)['"]\)/.test(s), f + ' opens a socket, a process or a file');
         calls = calls.concat(s.match(/diag\.(physical|functional|send)\([^)]*/g) || []);
     });
-    assert.equal(calls.length, 2, 'only the session controller and isolated player test transport send requests');
+    assert.equal(calls.length, 3, 'session, address-test controller and isolated player test transport send requests');
 });
 
 /** The entries of a .tgz (ustar). */
@@ -119,7 +123,7 @@ test('the Store package: the app\'s files as in apps/, the kit\'s licence, no SD
     ['package/package.json', 'package/manifest.json', 'package/LICENSE-app-kit', 'package/NOTICE.md', 'package/javascript/app.js',
         'package/javascript/kit/diag.js', 'package/javascript/kit/parked.js'].forEach((n) => assert.ok(all.includes(n), n));
     assert.ok(!all.some((n) => /oap-sdk|node_modules/.test(n)), 'the SDK is not packaged');
-    ['lamps.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js'].forEach((f) => {
+    ['address-tests.js', 'lamps.js', 'player.js', 'session.js', 'shows.js', 'transport.js', 'vehicle.js', 'view.js'].forEach((f) => {
         const e = out.find((x) => x.name === 'package/javascript/' + f);
         assert.ok(e, f);
         assert.ok(raw.slice(e.at, e.at + e.size).equals(fs.readFileSync(path.join(app, f))), f + ' is the file in apps/ (build again)');

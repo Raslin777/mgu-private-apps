@@ -2,7 +2,7 @@
   "id": "external_lights",
   "title": "External Lights",
   "description": "Exterior lamp effects with diagnostic session checks. Movement warning only. Not car-tested.",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "vendor": "custom",
   "loggingId": "EXLT",
   "iconGlyph": "EL",
@@ -31,6 +31,45 @@
         [
           "BTN_FLASH",
           "Flash lamp"
+        ],
+        [
+          "BTN_TESTS",
+          "Address tests"
+        ]
+      ]
+    },
+    {
+      "name": "DIAGNOSTICS",
+      "kind": "canvas",
+      "title": "Diagnostic address tests",
+      "buttons": [
+        [
+          "BTN_TEST_SOURCE",
+          "Next address"
+        ],
+        [
+          "BTN_TEST_READ",
+          "Read test"
+        ],
+        [
+          "BTN_TEST_WRITE",
+          "Write test"
+        ],
+        [
+          "BTN_TEST_STOP",
+          "Stop test"
+        ],
+        [
+          "BTN_TEST_EARLIER",
+          "Earlier"
+        ],
+        [
+          "BTN_TEST_LATER",
+          "Later"
+        ],
+        [
+          "BTN_TEST_BACK",
+          "Back"
         ]
       ]
     }
@@ -76,6 +115,30 @@
         [
           "10",
           "10"
+        ]
+      ]
+    },
+    {
+      "key": "testSource",
+      "label": "Diagnostic test source (lighting stays F2)",
+      "type": "choice",
+      "default": "F4",
+      "options": [
+        [
+          "F2",
+          "F2 (baseline)"
+        ],
+        [
+          "F1",
+          "F1"
+        ],
+        [
+          "F4",
+          "F4"
+        ],
+        [
+          "F5",
+          "F5"
         ]
       ]
     }

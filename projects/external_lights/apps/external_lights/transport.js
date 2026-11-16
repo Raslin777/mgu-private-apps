@@ -13,6 +13,28 @@ function transportError(message, raw, code) {
 // Keep the pinned kit's F2 identity and send protocol. Handle its separate
 // transport-error events in the same waiter as ECU replies, without retries.
 class Transport extends Diag {
+    async send(target, sid, data, options) {
+        if (!options || options.testSource == null) return super.send(target, sid, data, options);
+        const source = options.testSource, d = data || [];
+        const read = sid === 0x22 && d.length === 2 &&
+            ((d[0] === 0xf1 && d[1] === 0x50) || (d[0] === 0xd5 && d[1] === 0x42));
+        const session = sid === 0x10 && d.length === 1 && (d[0] === 1 || d[0] === 3);
+        const keep = sid === 0x3e && d.length === 1 && d[0] === 0;
+        const lamp = sid === 0x2e && d.length === 6 && d[0] === 0xd5 && d[1] === 0x42 &&
+            d[2] === 0 && d[3] === 6 && d[4] === 0 && (d[5] === 0 || d[5] === 50);
+        if ([0xf1,0xf2,0xf4,0xf5].indexOf(source) < 0 || target !== 0x40 || !(read || session || keep || lamp))
+            throw new Error('Request outside the address-test workflow');
+        if (!this.p || !this.available) throw new Error('Diagnostic link unavailable');
+        if (lamp && d[5] !== 0 && (!options.testAllowed || options.testAllowed()))
+            throw new Error('Address-test write requires fresh Park and zero speed');
+        const result = await this.signals.call(this.p, 'sendTasuRequest', {
+            sourceAddress: source, targetAddress: target, serviceID: sid, subroutineID: 0,
+            udsDataLength: d.length, udsData: Buffer.from(d), deadlockTime: 0
+        }, options.callTimeoutMs || 1200);
+        const value = result && typeof result === 'object' ?
+            (result.TasuErrorEnum || Object.keys(result).map(k => result[k]).find(v => typeof v === 'string')) : result;
+        return value === undefined ? 'NO_ERROR' : String(value);
+    }
     _onResponse(value) {
         this.rawResponse = { bytes: toBytes(value && (value.udsResponse !== undefined ? value.udsResponse : value)) };
         super._onResponse(value);
@@ -20,7 +42,8 @@ class Transport extends Diag {
     async physical(target, sid, data, timeoutMs, accept, options) {
         if (this.activeRequest) throw new Error('A diagnostic request is already active');
         const opts = options || {}, request = [sid].concat(data || []);
-        const exchange = { target: target, request: hex(request), rawTasu: [], origin: null, transportCode: null };
+        const exchange = { source: opts.testSource == null ? 0xf2 : opts.testSource,
+            target: target, request: hex(request), rawTasu: [], origin: null, transportCode: null };
         this.activeRequest = exchange;
         let timer, hard, done = false, finish;
         const got = new Promise(resolve => {

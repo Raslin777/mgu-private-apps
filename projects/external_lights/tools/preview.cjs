@@ -19,7 +19,8 @@ const hu = headUnit(stage, {
 });
 hu.start();
 setTimeout(async () => {
-    const buttons = ['BTN_SHOW', 'BTN_LAMP', 'BTN_FLASH', 'BTN_START', 'BTN_STOP'];
+    const buttons = ['BTN_SHOW', 'BTN_LAMP', 'BTN_FLASH', 'BTN_START', 'BTN_STOP',
+        'BTN_TESTS','BTN_TEST_SOURCE','BTN_TEST_READ','BTN_TEST_WRITE','BTN_TEST_EARLIER','BTN_TEST_LATER','BTN_TEST_BACK'];
     for (const b of buttons) {
         if (!hu.handlers[b]) { console.error('no handler for ' + b); process.exit(1); }
         name = b.slice(4).toLowerCase();
