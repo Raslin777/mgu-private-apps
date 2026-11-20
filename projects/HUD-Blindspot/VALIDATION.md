@@ -1,77 +1,42 @@
-# HUD Blindspot 0.1.1 validation — November 20, 2026
+# HUD Blindspot 0.1.2 validation — November 20, 2026
 
-0.1.1 adds a native Position button menu: select both, left or right; move in
-four directions; reset selected offsets; return to the main page. Offsets are
-saved in the existing atomic settings storage. Bounds prevent side swapping
-and off-viewport movement, including corrupted settings. At a boundary a
-reverse press moves immediately; invisible excess offsets never accumulate.
-The Position page is a native list, not a second renderer canvas.
+Built and tested offline. No HU connection, live UDS request, vehicle coding or firmware modification was performed.
 
-At the owner's request, enabled indicators now remain as faint outlines and
-fill on a fresh active warning. Acute warnings alternate filled/outlined at
-2 Hz. Missing/stale/invalid data removes fills but leaves idle position-marker
-outlines. The outlines do not indicate warning-system availability or safety.
+## Source correction and evidence
 
-New checks exercise independent/group movement, reset and persisted settings,
-viewport limits at all sizes, reverse movement at edges, malformed values,
-and the overlay's actual separate x/y placement. Background/foreground tests
-press every position control and verify native menu navigation.
+The LCA SOME/IP source is supported by the catalog recovered from reference HU firmware 018_030_018. This does not prove the service is present or published by the owner's installed HU. The owner confirmed the separate catalog lacking LCA came from a similar car.
 
-Built and tested offline on the development PC. No connection to the HU, no
-vehicle commands, no coding or firmware modifications, and no car test.
+0.1.2 adds an independent read-only path: **22 D3 47** to BDC 40 from F2. ISTA's bdc_g11.prg, bdc_g05.prg, bdc.prg and bcp_sp21.prg define AUSSENSPIEGEL_HC2 / D347. Their result tables give one left byte, then one right byte: 00 off, 01 steady, 02/03/04 blinking levels, 0D display fault, FF invalid. Diag.sqlite corroborates the BDC STATUS_LESEN mirror job and argument.
 
-## Evidence checked
+The optional PRG test checks the actual function, result-table order/types and enum table against the decoder. None of these proprietary inputs are distributed. The outgoing request has fixed target/source/SID/DID; no session change, security access, actuator control or alternate tester identity is implemented. These are active diagnostic reads, not passive CAN monitoring.
 
-The owner's locally held `mgu_someip_service_schema.json` was used for a test
-that checks the exact interface, instance, notifier-only field permission,
-broadcast output names and typed left/right/qualifier enums. The proprietary
-schema was not copied into this project or its release package.
+## Offline verification
 
-The MGU App Kit is pinned to
-`2c6cfdfaa6902f1b469c3784508fadae12b577eb`. Its background/start split is used
-so warning processing does not depend on a visible RHMI screen. The package
-is marked `mguAppStartType: autostart` and enablement defaults to false.
+**29 tests passed, none skipped**, with the local reference schema and bdc_g11.prg supplied:
 
-Cluster renderer's public README/protocol and Redline's HUD implementation
-were reviewed for the physical HUD target, image layers, transparency,
-coexistence and disconnect handling. The bundled unmodified client retains
-its MPL-2.0 notice and full licence. Runtime MIT notices are packaged.
+- Correct D347 request fields and left/right decoding, including value 04. Wrong DID, malformed length, faults and invalid values never fill icons.
+- Single-flight reads, 250 ms minimum delay after a reply, a 1.5 s deadline, error backoff and no reads while disabled or in SOME/IP-only mode.
+- Unsupported/range/access/session refusals latch until Disable/Enable or a source-change cycle. The adapter never attempts to unlock the ECU.
+- Different ECU/tester replies are ignored. Observed other BDC traffic yields the shared link. ECU negative replies and outer TASU errors remain distinct with raw bytes retained.
+- Response-pending replies stay within the original deadline. Stalled method calls cannot overlap another read; late rejections are handled.
+- Provider loss, stale samples, clock reversal, shutdown and Disable remove active data. Unavailable is never inferred to mean the lane is clear.
+- Auto prefers fresh D347, falls back to fresh SOME/IP on unavailable/refused reads, and does not mask a fresh explicit mirror fault. The real background adapter runs against a simulated HU without LCA.
+- Source selection, last TX, UDS RX, raw TASU RX and sample age appear on the center-screen page. The HUD still draws only two indicators.
+- Existing enable/disable, independent/group positioning, bounds, reset, saved-setting hooks, transparency, fill/blink and renderer disconnect/guard handling pass.
+- Archive sources match the app; ID7/autostart/dependency metadata and licences are present. No BMW SDK, ISTA data, schema, executable or key is bundled.
 
-## Offline checks
+Node v8.16.2 compiles every shipped module and executes the actual D347 reader with a mocked TASU call, decoder, source selection, positioning and artwork. The SDK-free build passed. Synthetic app and HUD previews were rendered and visually inspected.
 
-18 tests passed with the owner's schema supplied, none skipped:
+## Build and third-party details
 
-- Independent left/right warning and acute levels, numeric and named enums.
-- Standby/unavailable/invalid/inconsistent states, unknown values, partial
-  updates, stale samples and clock reversal never authorize active fill.
-- Provider loss clears data and late notifications are ignored until the
-  provider returns. Raw mirror-event values never create icons by themselves.
-- Only subscriptions are used; no setters, diagnostic methods or commands.
-- Enable/disable, transparency, small dimensions, placement, independent
-  fill clearing, urgent filled/outline blinking and no upload for unchanged steady warnings.
-- Disconnect clears cached layers so stale artwork is not replayed; unsupported
-  targets and mapping-guard refusal remove graphics without overriding guards.
-- Background-only boot without RHMI, all footer controls, saved-setting hooks,
-  and shutdown of proxies, timer and renderer connection.
-- SDK-free Store archive: source modules match, dependency and ID7 metadata,
-  required notices/licences, no BMW SDK, schema, executables or keys.
+MGU App Kit pin: 2c6cfdfaa6902f1b469c3784508fadae12b577eb (MIT). Background processing works without a visible RHMI screen. The package has mguAppStartType autostart, enablement defaults to false, and both data interfaces are optional. Existing atomic settings storage preserves positions/opacity/size.
 
-Node v8.16.2 compiles every shipped application module and executes warning
-expiry, artwork, HUD geometry and the real renderer client module. The
-SDK-free build succeeded. Synthetic app and HUD previews were rendered and
-visually inspected for placement and transparency.
+The unmodified Cluster renderer client is MPL-2.0, with full licence and source distributed. Cluster renderer 0.6.7+ remains a separate dependency. The app does not reset its guard or force stock popups out of the way.
 
-## Unverified on a car
+## Required on-car verification
 
-Installation and permissions on this exact HU, whether notifications are
-periodic (the fail-hidden expiry is 2 s), signal delivery and latency while
-moving, exact matching with the physical mirror LEDs, apparent size and
-brightness on glass, background behavior across sleep/profile switches, and
-coexistence with each installed HUD app. The typed warning state is not proof
-of an electrically lit mirror LED. The renderer tests use a simulated peer;
-they do not emulate the KOMBI, RAMSES or the car's warning system.
+Definitions and mocks do not prove that this installed BDC accepts D347 from TASU, returns the described payload, refreshes it live or permits reads while moving. Start with D347-only mode while parked and inspect actual replies. Physical mirror parity, blink timing, latency, HUD placement/brightness and background operation across sleep/profile changes still need verification.
 
-Missing/stale signal data removes active fills and is reported as unavailable;
-only faint position-marker outlines remain while enabled.
-The absence of a graphic never means the lane is safe. This release does not
-change the factory warning system. ID8 is not claimed or packaged.
+Avoid concurrent diagnostic applications: TASU is a shared response broadcast, and some negative replies cannot uniquely identify clients using the same tester/SID. SOME/IP availability and notification cadence also remain unverified; its notifier may be change-only.
+
+Both sources expire after 2 seconds without a fresh valid sample. Faint outlines remain as position markers while enabled, including without data; they are not a readiness/all-clear indication. This app supplements the factory warning system. ID8 is not claimed or packaged.

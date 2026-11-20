@@ -1,11 +1,11 @@
-# HUD Blindspot 0.1.1
+# HUD Blindspot 0.1.2
 
 A faint amber outline on each side of the **windshield HUD**, filling when the
 car reports a blind-spot/lane-change warning on that side. The default icons
 are 40 by 40 scene pixels at 65% opacity on an iDrive 7 800x480 HUD scene,
 with a completely transparent background. Idle outlines use 22% of the selected
 opacity (about 14% at the default 65%). Active icons use the full selected
-opacity. An acute warning blinks between filled and outlined at 2 Hz.
+opacity. A blinking/acute warning alternates filled and outlined at 2 Hz.
 Both sides can activate together. Outlines are position markers, not an
 all-clear or an assurance that the warning system is available.
 The app draws only these two indicators: no speed, MPH/km/h, gauges, labels
@@ -23,7 +23,7 @@ factory mirror warnings or checking before changing lanes.
    instructions. This app uses the existing renderer; it does not install a
    second RAMSES participant or patch firmware.
 2. Add `Raslin777/mgu-private-apps` as a **Releases** source, refresh, and
-   install **HUD Blindspot 0.1.1**. Alternatively use the release's `catalog.json`.
+   install **HUD Blindspot 0.1.2**. Alternatively use the release's `catalog.json`.
    The catalog and package declare the renderer dependency.
 3. Open **HUD Blindspot**, then press **Enable**. It is disabled on first
    install. **Disable** removes this app's HUD layers and closes its renderer
@@ -36,6 +36,10 @@ factory mirror warnings or checking before changing lanes.
    scene. **Reset selected position** restores the selected side(s) to their
    original offsets under the current Height preset. **Back** returns to the
    app page. All offsets and the selected side are saved across restarts.
+6. In **Settings > Warning data source**, use **Auto: D347, then SOME/IP**
+   (default), **D347 mirror status only**, or **SOME/IP only**. Auto prefers
+   a fresh BDC mirror-status read and uses fresh SOME/IP data if the read is
+   unavailable. The center-screen page identifies which source is in use.
 
 Movement is clamped inside a conservative viewport and each icon's half of
 the HUD. Repeated presses at an edge do not accumulate invisible movement.
@@ -46,15 +50,46 @@ the HUD except the two indicators, including while adjusting positions.
 Once enabled the background component watches warnings even when its center-
 screen page is closed, and is marked for platform autostart. Actual lifecycle
 behavior across sleep/profile changes still needs HU verification. Shutdown
-releases the subscriptions and HUD layers. There is no fake live-data mode.
+releases the subscriptions, pending read and HUD layers. Disable also stops
+UDS reads; SOME/IP-only mode sends no UDS requests. There is no fake live-data mode.
 
 This package targets **iDrive 7 only**. The upstream renderer also supports
 iDrive 8, but this app's RHMI package and the owner's checked signal schema
 are ID7; this is not an ID8 release.
 
-## Signal and rendering evidence
+## Read-only BDC mirror status (new in 0.1.2)
 
-The owner's local HU SOME/IP catalog lists:
+ISTA's `bdc_g11.prg`, `bdc_g05.prg`, `bdc.prg` and `bcp_sp21.prg` all define
+`AUSSENSPIEGEL_HC2` / DID **D347**, with separate one-byte left/right mirror
+status results. Diag.sqlite corroborates the `STATUS_LESEN` job and argument.
+This avoids depending entirely on the LCA SOME/IP service being present.
+
+The only diagnostic request the app can send is **`22 D3 47`**, source F2 to
+BDC 40. A positive reply must be exactly `62 D3 47 LL RR`. Values 00 = off,
+01 = steady on, 02/03/04 = blinking levels, 0D = display fault, FF = invalid.
+The latter two are never treated as active warnings. The three blinking
+levels are shown with this app's 2 Hz animation; exact OEM flash timing has
+not been established. A fresh positive mirror-fault/invalid reply is not
+masked by switching to the other source.
+
+Reads run only while enabled and not in SOME/IP-only mode: one at a time,
+at least 250 ms after the previous response (at most four reads per second),
+with a 1.5 s hard deadline. Errors back off for 2 s. Unsupported/range/access-
+denied/session refusals stop further reads until Disable/Enable or a source
+change. The app does not change sessions, unlock access, test other addresses,
+or activate mirror LEDs. It yields for 2 s when other BDC diagnostic traffic
+is observed. All TASU traffic is shared; some negative replies cannot be
+uniquely attributed to a client. Avoid running other diagnostic apps at once.
+
+The app page retains the last TX, UDS RX and raw TASU RX, with the selected
+source, sample age and any fallback reason. The log records changed replies
+and errors. A successful read is still only reported status; physical mirror
+agreement, ECU support and delivery while moving need car verification.
+
+## SOME/IP and rendering evidence
+
+The recovered **018_030_018 reference firmware catalog**, not yet confirmed
+as the owner's installed HU version, lists:
 
 - `de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance`,
   instance `1`.
@@ -63,18 +98,24 @@ The owner's local HU SOME/IP catalog lists:
   0 no warning, 1 warning, 2 acute warning, 3 acute warning plus steering.
 - `qualifierLaneChangeWarning`: 9/11 are active/active reduced; 1/3 are
   available/available reduced. Unavailable, invalid or inconsistent states
-  do not produce icons.
+  do not produce active fill.
 - The broadcast `requestWarningSteeringWheelExteriorMirror`, with
   `requestExteriorMirrorDisplayWarningLeftHand` and `...RightHand` outputs.
   These are **UInt8 with no enum**, default 15, in the catalog. They are
   retained as raw values on the app page; they do not drive the overlay.
 
-The app therefore follows the documented **lane-change warning states**.
+The separate `Downloads/someip-interfaces.json` lacks this service, and the
+owner confirmed that file came from a similar car. Neither reference proves
+which services the running HU exposes. Both interfaces are optional at
+installation: either source can work independently; neither provides invented
+warning data when missing.
+
+When SOME/IP is selected, the app follows the documented **lane-change warning states**.
 Exact electrical mirror-LED parity has not been established. It does not
 interpret any nonzero mirror-event value as a warning, nor use lane-departure
 arrows, turn signals or sunblind fields as a blind-spot substitute.
 
-Notifications, rather than polled cached getters, timestamp the samples. A
+SOME/IP notifications, rather than polled cached getters, timestamp those samples. A
 sample older than **2 seconds** is marked stale and its active fill removed. The
 catalog does not document whether this notifier is periodic on every car; if
 it is change-only, a steady warning's fill may time out. This needs real signal logs
@@ -116,14 +157,15 @@ python tools/build.py
 npm test
 npm run check:node8
 npm run preview
-python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.1
+python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.2
 ```
 
 For the Node 8 check, supply the official Windows Node v8.16.2 executable at
 `.cache/node8.exe`. For the optional local schema check, set
-`HUD_BLINDSPOT_SCHEMA` to the owner's JSON catalog path. Neither is committed.
+`HUD_BLINDSPOT_SCHEMA` to the local reference JSON catalog path. The optional
+PRG check uses `HUD_BLINDSPOT_PRG` pointing to `bdc_g11.prg`. Neither input is committed.
 
-Artifacts: `dist/hud_blindspot@0.1.1.tgz`, `dist/catalog.json`,
+Artifacts: `dist/hud_blindspot@0.1.2.tgz`, `dist/catalog.json`,
 `dist/SHA256SUMS.txt`. Previews in `preview/` are synthetic placement examples,
 not photographs or evidence of car operation. The package contains no BMW
 SDK, firmware, schema, keys, native renderer binary or emulator.
@@ -135,7 +177,9 @@ HUD content first. Validate left, right, both, steady, urgent and clear states
 against the actual mirror LEDs using a passenger or recorded logs. Do not
 operate the setup controls while driving. The app log is `hud_blindspot.log`
 in its platform data directory; it records decoded and raw mirror state changes. The app
-page shows current raw mirror-event values and the warning sample's age.
+page shows the selected source, last UDS/TASU replies and sample age. For
+the first check use D347-only mode and confirm actual `62 D3 47 LL RR`
+responses. Unsupported/negative replies are not evidence of a clear lane.
 Check stale/unavailable behavior and renderer coexistence before relying on
 the overlay as supplemental information. An absent icon is not an assurance
 that a lane is clear.

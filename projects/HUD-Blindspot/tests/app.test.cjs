@@ -16,6 +16,7 @@ test('boot/background operation works with no RHMI screen; enable persists and s
     const settings = { values: Object.fromEntries(spec.settings.map(s => [s.key, s.default])), listeners: [],
         get(k) { return this.values[k]; }, set(k, v) { this.values[k] = v; this.listeners.forEach(fn => fn(k, v)); },
         onChange(fn) { this.listeners.push(fn); } };
+    settings.values.source = 'someip';
     class Renderer extends EventEmitter {
         constructor() { super(); clients.push(this); this.ready = true; this.targets = 'hud:800x480'; this.layers = new Map(); this.next = 1; }
         connect() { this.emit('ready'); } close() { this.closed = true; this.layers.clear(); }
@@ -88,16 +89,61 @@ test('declared fields, event outputs, enum values and access modes match the loc
         const qualifierType = struct.members.find(m => m.name === 'qualifierLaneChangeWarning').dataRef;
         assert.equal(schema.datatypes[qualifierType].items.FUNCTION_ACTIVE, 9);
         assert.equal(schema.datatypes[qualifierType].items.FUNCTION_ACTIVE_REDUCED, 11);
-        assert.equal(Object.keys(spec.signals).length, 1);
+        const tasu = 'com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu';
+        assert.equal(spec.signals[tasu]._instances, 'SystemFunctionsInternalTasuInst1');
+        assert.deepEqual(spec.signals[tasu]._methods, ['sendTasuRequest']);
+        assert.deepEqual(spec.signals[tasu]._broadcasts, ['sendTasuResponse']);
+        assert.ok(schema.interfaces[tasu].methods.sendTasuRequest);
+        assert.equal(Object.keys(spec.signals).length, 2);
     });
 
-test('manifest has saved enable/disable, background start and no diagnostic/setter permissions', () => {
+test('manifest has saved controls, background start and only the read adapter can call the diagnostic method', () => {
     assert.equal(spec.autostart, true); assert.equal(spec.settings.find(s => s.key === 'enabled').default, false);
     assert.equal(spec.screens.filter(s => s.kind === 'canvas').length, 1);
-    const text = JSON.stringify(spec.signals);
-    assert.ok(!/sendTasu|_methods|"[rw]+"/.test(text));
+    assert.equal(spec.settings.find(s => s.key === 'source').default, 'auto');
+    assert.ok(Object.values(spec.signals).every(signal => signal._optional));
     for (const file of fs.readdirSync(app).filter(f => /\.js$/.test(f) && f !== 'cluster_render_client.js')) {
         const code = fs.readFileSync(path.join(app, file), 'utf8');
-        assert.ok(!/signals\.(set|call)\(|sendTasuRequest|child_process|execSync/.test(code), file);
+        assert.ok(!/signals\.set\(|child_process|execSync/.test(code), file);
+        if (file !== 'uds.js') assert.ok(!/signals\.call\(|sendTasuRequest/.test(code), file);
     }
+});
+
+test('without the LCA interface, the background uses the real D347 reader and releases it when disabled', async t => {
+    let implementation; const handlers = {}, calls = [], appEvents = new EventEmitter();
+    t.after(() => appEvents.emit('shutdown'));
+    const values = Object.fromEntries(spec.settings.map(s => [s.key, s.default])); values.enabled = true;
+    const listeners = [];
+    const settings = { get: k => values[k], onChange: fn => listeners.push(fn),
+        set(k, v) { values[k] = v; listeners.forEach(fn => fn(k, v)); } };
+    class Renderer extends EventEmitter {
+        constructor() { super(); this.ready = true; this.targets = 'hud:800x480'; this.ref = 0; }
+        connect() {} close() {} image() { return ++this.ref; } pixels() {} set() {} drop() {}
+    }
+    vm.runInNewContext(fs.readFileSync(path.join(app, 'main.js'), 'utf8'), {
+        require(name) {
+            if (name === './kit/mgu') return { run(config) { implementation = config; } };
+            if (name === './cluster_render_client') return { ClusterRender: Renderer };
+            return require(path.join(app, name));
+        }, process: new EventEmitter(), Date, setInterval() { return 1; }, clearInterval() {}
+    });
+    const model = await implementation.background({ app: appEvents, settings, log: quiet, signals: {
+        async proxy(iface) {
+            if (iface.endsWith('LateralCollisionAvoidance')) throw new Error('interface not on this HU');
+            return { shutdown() {} };
+        },
+        async on(p, name, fn) { handlers[name] = fn; }, async onAvailable(p, fn) { fn(true); },
+        async call(p, name, args) {
+            calls.push(args);
+            setImmediate(() => handlers.sendTasuResponse({ errorCode: 'NO_ERROR',
+                udsResponse: Buffer.from([0xf0, 0xf2, 0x71, 1, 0xf, 0xb, 0x40, 0, 5, 0x62, 0xd3, 0x47, 4, 0]) }));
+            return 'NO_ERROR';
+        }
+    } });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.length, 1); assert.equal(calls[0].serviceID, 0x22);
+    assert.equal(model.model().warning.source, 'UDS D347');
+    assert.equal(model.model().warning.left, 2); assert.equal(model.model().warning.right, 0);
+    assert.equal(model.model().diagnostic.trace.rx, '62 D3 47 04 00');
+    settings.set('enabled', false); assert.equal(model.model().warning.valid, false);
 });

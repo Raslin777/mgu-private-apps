@@ -26,4 +26,22 @@ const saved = position.change({}, 'left', 1, -1, false);
 assert.equal(layout('hud:800x480', { positions: saved }).left, 160);
 assert.equal(layout('hud:800x480', { positions: saved }).right, 616);
 assert.equal(typeof require(path.join(app, 'cluster_render_client')).ClusterRender, 'function');
-console.log('Node ' + process.version + ': all app modules compile; warning expiry, artwork and renderer client execute');
+async function readCheck() {
+    const { MirrorReader, decodeD347, selectSource } = require(path.join(app, 'uds'));
+    const log = { info() {}, warn() {} };
+    let calls = 0;
+    const reader = new MirrorReader({ async proxy() { return { shutdown() {} }; }, async on() {},
+        async onAvailable(p, fn) { fn(true); }, async call(p, method, args) {
+            calls++; assert.equal(method, 'sendTasuRequest'); assert.equal(args.serviceID, 0x22);
+            assert.deepEqual(Array.from(args.udsData), [0xd3, 0x47]);
+            reader.receive({ errorCode: 'NO_ERROR', udsResponse: Buffer.from([0xf0, 0xf2, 0x71, 1, 0xf, 0xb, 0x40, 0, 5, 0x62, 0xd3, 0x47, 4, 0]) });
+            return 'NO_ERROR';
+        } }, log, function () {});
+    await reader.start(); reader.tick(false); assert.equal(calls, 0);
+    reader.tick(true); assert.equal(reader.snapshot().left, 2);
+    assert.equal(selectSource(reader.snapshot(), { valid: false }, 'auto').source, 'UDS D347');
+    assert.equal(decodeD347([0x62, 0xd3, 0x47, 0x0d, 0]).valid, false);
+    await Promise.resolve(); reader.stop();
+    console.log('Node ' + process.version + ': all app modules compile; positions, D347 reader/decoder, warning expiry and artwork execute');
+}
+readCheck().catch(error => { console.error(error); process.exitCode = 1; });

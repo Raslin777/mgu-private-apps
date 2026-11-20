@@ -18,5 +18,8 @@ the optional native GPU renderer. Cluster renderer itself is an independently
 installed upstream dependency; its executable is not bundled here.
 
 BMW's SOME/IP schema was consulted locally to identify read-only subscriptions
-and warning enums. No BMW schema file, SDK, firmware or key is distributed.
+and warning enums. ISTA's BDC definitions and Diag.sqlite corroborate the D347
+mirror-status read, field order and value meanings. No ISTA file, BMW schema,
+SDK, firmware or key is distributed. The app sends only the fixed 22 D347
+read through TASU; it contains no diagnostic session or actuator control path.
 No IterioDev code or binary is used.

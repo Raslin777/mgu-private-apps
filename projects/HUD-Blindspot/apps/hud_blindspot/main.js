@@ -6,26 +6,35 @@ const { WarningSource } = require('./source');
 const { Overlay } = require('./overlay');
 const { draw } = require('./view');
 const Position = require('./position');
+const { MirrorReader, selectSource } = require('./uds');
 mgu.run({
     async background(ctx) {
         const warning = new WarningState();
         const overlay = new Overlay(() => new ClusterRender('hud_blindspot'), ctx.log);
-        let stopped = false;
+        let stopped = false, reader;
         const values = () => ({ enabled: ctx.settings.get('enabled'), size: ctx.settings.get('size'),
             opacity: ctx.settings.get('opacity'), height: ctx.settings.get('height'),
-            positions: ctx.settings.get('positions'), positionTarget: ctx.settings.get('positionTarget') });
+            positions: ctx.settings.get('positions'), positionTarget: ctx.settings.get('positionTarget'),
+            source: ctx.settings.get('source') || 'auto' });
+        const selected = () => selectSource(reader.snapshot(), warning.snapshot(), values().source);
         const tick = () => {
             if (stopped) return;
-            try { overlay.update(warning.snapshot(), values(), Date.now()); }
+            try {
+                const settings = values();
+                reader.tick(settings.enabled === true && settings.source !== 'someip');
+                overlay.update(selected(), settings, Date.now());
+            }
             catch (e) { overlay.close(); ctx.log.warn('HUD overlay: ' + String(e.message || e)); }
         };
         const source = new WarningSource(ctx.signals, warning, ctx.log, tick);
+        reader = new MirrorReader(ctx.signals, ctx.log, tick);
         ctx.settings.onChange(tick);
         const timer = setInterval(tick, 100);
-        const stop = () => { if (stopped) return; stopped = true; clearInterval(timer); overlay.close(); source.stop(); };
+        const stop = () => { if (stopped) return; stopped = true; clearInterval(timer); overlay.close(); source.stop(); reader.stop(); };
         ctx.app.on('shutdown', stop); process.once('exit', stop);
-        await source.start(); tick();
-        return { model: () => Object.assign(values(), { warning: warning.snapshot(), overlay: { link: overlay.link, target: overlay.target } }),
+        await Promise.all([source.start(), reader.start()]); tick();
+        return { model: () => Object.assign(values(), { warning: selected(), diagnostic: { reason: reader.reason, trace: reader.trace },
+                overlay: { link: overlay.link, target: overlay.target } }),
             hudTargets: () => overlay.client && overlay.client.targets || 'hud:800x480', stop: stop };
     },
     async start(ctx) {
