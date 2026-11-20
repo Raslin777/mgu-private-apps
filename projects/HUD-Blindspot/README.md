@@ -5,6 +5,8 @@ car reports a blind-spot/lane-change warning on that side. The default icons
 are 40 by 40 scene pixels at 65% opacity on an iDrive 7 800x480 HUD scene,
 with a completely transparent background. An acute warning blinks at 2 Hz.
 Both sides can appear together. There is no all-clear symbol on the HUD.
+The app draws only these two indicators: no speed, MPH/km/h, gauges, labels
+or other readouts. Settings and diagnostic text stay on the center screen.
 
 **Offline-tested prototype, not car-tested.** Signal availability, warning
 timing, physical visibility and agreement with the mirror LEDs need checking

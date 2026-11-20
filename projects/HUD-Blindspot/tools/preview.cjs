@@ -7,9 +7,6 @@ const { icon, layout } = require('../apps/hud_blindspot/artwork');
 const { draw } = require('../apps/hud_blindspot/view');
 const dir = path.join(root, 'preview'); fs.mkdirSync(dir, { recursive: true });
 const cv = new Canvas(800, 480); cv.clear('#111c26');
-cv.text('SIMULATED HUD - BOTH WARNINGS', 205, 65, 18, '#b6c4d3');
-cv.text('42', 348, 344, 76, '#ffffff'); cv.text('km/h', 438, 348, 21, '#c6d0dd');
-cv.text('Factory content represented for placement only', 160, 420, 18, '#8798ab');
 const shape = layout('hud:800x480', {});
 for (const side of ['left', 'right']) {
     const out = icon(side, false, shape.size);
