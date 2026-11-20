@@ -2,14 +2,17 @@
   "id": "hud_blindspot",
   "title": "HUD Blindspot",
   "description": "Small translucent left and right blind-spot warnings on the HUD. Supplemental, read-only, not car-tested.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "vendor": "Raslin777",
   "loggingId": "HDBS",
   "iconGlyph": "BS",
   "autostart": true,
   "screens": [{
     "name": "MAIN", "kind": "canvas", "title": "HUD Blindspot",
-    "buttons": [["BTN_ENABLE", "Enable"], ["BTN_DISABLE", "Disable"], ["BTN_SIZE", "Size"], ["BTN_OPACITY", "Opacity"], ["BTN_HEIGHT", "Height"]]
+    "buttons": [["BTN_ENABLE", "Enable"], ["BTN_DISABLE", "Disable"], ["BTN_SIZE", "Size"], ["BTN_OPACITY", "Opacity"], ["BTN_HEIGHT", "Height"], ["BTN_POSITION", "Position"]]
+  }, {
+    "name": "POSITION", "kind": "list", "title": "Blindspot indicator position",
+    "items": [["button", "POS_TARGET", "Move: Both indicators"], ["button", "POS_LEFT", "Move left"], ["button", "POS_RIGHT", "Move right"], ["button", "POS_UP", "Move up"], ["button", "POS_DOWN", "Move down"], ["button", "POS_RESET", "Reset selected position"], ["button", "POS_BACK", "Back"]]
   }],
   "signals": {
     "de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance": {
@@ -23,6 +26,8 @@
     {"key": "enabled", "label": "Enable HUD blind-spot indicators", "type": "bool", "default": false},
     {"key": "size", "label": "Indicator size", "type": "choice", "default": "small", "options": [["small", "Small"], ["medium", "Medium"], ["large", "Large"]]},
     {"key": "opacity", "label": "Indicator opacity", "type": "choice", "default": "65", "options": [["45", "45%"], ["65", "65%"], ["85", "85%"]]},
-    {"key": "height", "label": "Indicator height", "type": "choice", "default": "50", "options": [["40", "Higher"], ["50", "Middle"], ["60", "Lower"]]}
+    {"key": "height", "label": "Indicator height", "type": "choice", "default": "50", "options": [["40", "Higher"], ["50", "Middle"], ["60", "Lower"]]},
+    {"key": "positionTarget", "label": "Move which indicator", "type": "choice", "default": "both", "options": [["both", "Both indicators"], ["left", "Left indicator"], ["right", "Right indicator"]]},
+    {"key": "positions", "label": "Saved indicator offsets", "type": "object", "default": {"left": {"x": 0, "y": 0}, "right": {"x": 0, "y": 0}}, "hidden": true}
   ]
 }

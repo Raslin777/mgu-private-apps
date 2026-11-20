@@ -5,13 +5,15 @@ const { WarningState } = require('./warnings');
 const { WarningSource } = require('./source');
 const { Overlay } = require('./overlay');
 const { draw } = require('./view');
+const Position = require('./position');
 mgu.run({
     async background(ctx) {
         const warning = new WarningState();
         const overlay = new Overlay(() => new ClusterRender('hud_blindspot'), ctx.log);
         let stopped = false;
         const values = () => ({ enabled: ctx.settings.get('enabled'), size: ctx.settings.get('size'),
-            opacity: ctx.settings.get('opacity'), height: ctx.settings.get('height') });
+            opacity: ctx.settings.get('opacity'), height: ctx.settings.get('height'),
+            positions: ctx.settings.get('positions'), positionTarget: ctx.settings.get('positionTarget') });
         const tick = () => {
             if (stopped) return;
             try { overlay.update(warning.snapshot(), values(), Date.now()); }
@@ -23,7 +25,8 @@ mgu.run({
         const stop = () => { if (stopped) return; stopped = true; clearInterval(timer); overlay.close(); source.stop(); };
         ctx.app.on('shutdown', stop); process.once('exit', stop);
         await source.start(); tick();
-        return { model: () => Object.assign(values(), { warning: warning.snapshot(), overlay: { link: overlay.link, target: overlay.target } }), stop: stop };
+        return { model: () => Object.assign(values(), { warning: warning.snapshot(), overlay: { link: overlay.link, target: overlay.target } }),
+            hudTargets: () => overlay.client && overlay.client.targets || 'hud:800x480', stop: stop };
     },
     async start(ctx) {
         const background = ctx.background;
@@ -34,6 +37,26 @@ mgu.run({
         ctx.ui.onClick('BTN_SIZE', cycle('size', ['small', 'medium', 'large']));
         ctx.ui.onClick('BTN_OPACITY', cycle('opacity', ['45', '65', '85']));
         ctx.ui.onClick('BTN_HEIGHT', cycle('height', ['40', '50', '60']));
+        const positionLabel = () => {
+            const target = Position.selected(ctx.settings.get('positionTarget'));
+            return ctx.ui.text('POS_TARGET', 'Move: ' + (target === 'both' ? 'Both' : target === 'left' ? 'Left' : 'Right') +
+                ' | ' + Position.summary(background.model(), background.hudTargets()));
+        };
+        ctx.ui.onClick('BTN_POSITION', async () => { await positionLabel(); return ctx.ui.open('POSITION'); });
+        ctx.ui.onClick('POS_TARGET', async () => {
+            cycle('positionTarget', Position.TARGETS)(); return positionLabel();
+        });
+        const move = (dx, dy, reset) => async () => {
+            const positions = Position.change(background.model(), ctx.settings.get('positionTarget'), dx, dy, reset, background.hudTargets());
+            if (positions) ctx.settings.set('positions', positions);
+            return positionLabel();
+        };
+        ctx.ui.onClick('POS_LEFT', move(-1, 0, false));
+        ctx.ui.onClick('POS_RIGHT', move(1, 0, false));
+        ctx.ui.onClick('POS_UP', move(0, -1, false));
+        ctx.ui.onClick('POS_DOWN', move(0, 1, false));
+        ctx.ui.onClick('POS_RESET', move(0, 0, true));
+        ctx.ui.onClick('POS_BACK', () => ctx.ui.open('MAIN'));
         ctx.loop('MAIN', 2, () => {
             const cv = ctx.canvas(1600, 520); draw(cv, background.model());
             return ctx.ui.image('MAIN_GFX', cv);

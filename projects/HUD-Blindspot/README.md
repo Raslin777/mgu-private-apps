@@ -1,10 +1,13 @@
-# HUD Blindspot 0.1.0
+# HUD Blindspot 0.1.1
 
-A small amber warning on the left or right of the **windshield HUD** when the
+A faint amber outline on each side of the **windshield HUD**, filling when the
 car reports a blind-spot/lane-change warning on that side. The default icons
 are 40 by 40 scene pixels at 65% opacity on an iDrive 7 800x480 HUD scene,
-with a completely transparent background. An acute warning blinks at 2 Hz.
-Both sides can appear together. There is no all-clear symbol on the HUD.
+with a completely transparent background. Idle outlines use 22% of the selected
+opacity (about 14% at the default 65%). Active icons use the full selected
+opacity. An acute warning blinks between filled and outlined at 2 Hz.
+Both sides can activate together. Outlines are position markers, not an
+all-clear or an assurance that the warning system is available.
 The app draws only these two indicators: no speed, MPH/km/h, gauges, labels
 or other readouts. Settings and diagnostic text stay on the center screen.
 
@@ -20,13 +23,25 @@ factory mirror warnings or checking before changing lanes.
    instructions. This app uses the existing renderer; it does not install a
    second RAMSES participant or patch firmware.
 2. Add `Raslin777/mgu-private-apps` as a **Releases** source, refresh, and
-   install **HUD Blindspot 0.1.0**. Alternatively use the release's `catalog.json`.
+   install **HUD Blindspot 0.1.1**. Alternatively use the release's `catalog.json`.
    The catalog and package declare the renderer dependency.
 3. Open **HUD Blindspot**, then press **Enable**. It is disabled on first
    install. **Disable** removes this app's HUD layers and closes its renderer
    connection immediately. The setting is saved.
 4. **Size**, **Opacity** and **Height** cycle the corresponding saved settings.
    Settings also offers these options. The defaults are Small / 65% / Middle.
+5. **Position** opens a native button menu usable with touch or the iDrive
+   controller. Press **Move: Both/Left/Right** to select which indicator moves,
+   then use **Move left/right/up/down**. Each press moves about 2% of the HUD
+   scene. **Reset selected position** restores the selected side(s) to their
+   original offsets under the current Height preset. **Back** returns to the
+   app page. All offsets and the selected side are saved across restarts.
+
+Movement is clamped inside a conservative viewport and each icon's half of
+the HUD. Repeated presses at an edge do not accumulate invisible movement.
+The ID7 viewport is based on the same scene assumptions as the original
+placement; the actually visible area varies by vehicle. Nothing is added to
+the HUD except the two indicators, including while adjusting positions.
 
 Once enabled the background component watches warnings even when its center-
 screen page is closed, and is marked for platform autostart. Actual lifecycle
@@ -60,11 +75,13 @@ interpret any nonzero mirror-event value as a warning, nor use lane-departure
 arrows, turn signals or sunblind fields as a blind-spot substitute.
 
 Notifications, rather than polled cached getters, timestamp the samples. A
-sample older than **2 seconds** is marked stale and its icons removed. The
+sample older than **2 seconds** is marked stale and its active fill removed. The
 catalog does not document whether this notifier is periodic on every car; if
-it is change-only, a steady warning may time out. This needs real signal logs
+it is change-only, a steady warning's fill may time out. This needs real signal logs
 before changing the expiry policy. A fresh-looking timestamp cannot establish
-physical mirror agreement. Missing data is shown as Unavailable, not Clear.
+physical mirror agreement. Missing data is shown as Unavailable on the app
+page. While enabled, faint outlines remain as position markers; they do not
+mean Clear or that signal data is available.
 
 The renderer receives two small RGBA image layers, target `hud`, class
 `overlay`, nonexclusive, with no slot contention or guide hold. It retains
@@ -99,14 +116,14 @@ python tools/build.py
 npm test
 npm run check:node8
 npm run preview
-python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.0
+python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.1
 ```
 
 For the Node 8 check, supply the official Windows Node v8.16.2 executable at
 `.cache/node8.exe`. For the optional local schema check, set
 `HUD_BLINDSPOT_SCHEMA` to the owner's JSON catalog path. Neither is committed.
 
-Artifacts: `dist/hud_blindspot@0.1.0.tgz`, `dist/catalog.json`,
+Artifacts: `dist/hud_blindspot@0.1.1.tgz`, `dist/catalog.json`,
 `dist/SHA256SUMS.txt`. Previews in `preview/` are synthetic placement examples,
 not photographs or evidence of car operation. The package contains no BMW
 SDK, firmware, schema, keys, native renderer binary or emulator.

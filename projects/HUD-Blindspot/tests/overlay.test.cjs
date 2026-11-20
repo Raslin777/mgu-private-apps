@@ -36,24 +36,29 @@ test('disabled never connects; enabling creates only small transparent HUD overl
     f.overlay.update(warning(1, 1), { enabled: false }, 0);
     assert.equal(f.client.layers.size, 0); assert.equal(f.client.closed, true); assert.equal(f.overlay.client, null);
 });
-test('sides clear independently, unchanged steady warnings upload nothing, urgent warnings blink at 2 Hz', () => {
+test('clear sides keep faint outlines, steady warnings upload nothing and urgent warnings blink filled/outline at 2 Hz', () => {
     const f = fixture(); f.overlay.update(warning(1, 2), settings, 0);
     const before = f.client.calls.length; f.overlay.update(warning(1, 2), settings, 100);
     assert.equal(f.client.calls.length, before);
     f.overlay.update(warning(1, 2), settings, 250);
     assert.equal(f.client.layers.get(f.overlay.layers.left).visible, true);
-    assert.equal(f.client.layers.get(f.overlay.layers.right).visible, false);
-    f.overlay.update(warning(0, 2), settings, 500); assert.equal(f.client.layers.size, 1);
     assert.equal(f.client.layers.get(f.overlay.layers.right).visible, true);
-    f.overlay.update(warning(0, 0), settings, 500); assert.equal(f.client.layers.size, 0);
+    assert.equal(f.client.layers.get(f.overlay.layers.right).opacity, 0.65 * 0.22);
+    f.overlay.update(warning(0, 2), settings, 500); assert.equal(f.client.layers.size, 2);
+    assert.equal(f.client.layers.get(f.overlay.layers.right).opacity, 0.65);
+    assert.equal(f.client.layers.get(f.overlay.layers.left).opacity, 0.65 * 0.22);
+    f.overlay.update(warning(0, 0), settings, 500); assert.equal(f.client.layers.size, 2);
+    assert.ok([...f.client.layers.values()].every(l => l.opacity === 0.65 * 0.22));
 });
-test('stale data, unsupported HUD, renderer disconnect and mapping guard clear cached layers', () => {
+test('stale data removes fills; unsupported HUD, disconnect and mapping guard clear cached layers', () => {
     const f = fixture(); f.overlay.update(warning(1, 0), settings, 0);
-    f.overlay.update({ valid: false, active: false, left: 0, right: 0 }, settings, 0); assert.equal(f.client.layers.size, 0);
+    f.overlay.update({ valid: false, active: false, left: 1, right: 2 }, settings, 0); assert.equal(f.client.layers.size, 2);
+    assert.ok([...f.client.layers.values()].every(l => l.opacity === 0.65 * 0.22));
     f.overlay.update(warning(1, 0), settings, 0); f.client.ready = false; f.client.emit('disconnected');
     assert.equal(f.client.layers.size, 0); assert.deepEqual(f.overlay.layers, {});
     f.client.ready = true; f.client.emit('ready');
-    f.overlay.update({ valid: false }, settings, 0); assert.equal(f.client.layers.size, 0);
+    f.overlay.update({ valid: false }, settings, 0); assert.equal(f.client.layers.size, 2);
+    assert.ok([...f.client.layers.values()].every(l => l.opacity === 0.65 * 0.22));
     f.client.targets = 'map:1088x480'; f.overlay.update(warning(1, 0), settings, 0);
     assert.match(f.overlay.target, /not supported/); assert.equal(f.client.layers.size, 0);
     f.client.targets = 'hud:800x480'; f.overlay.update(warning(1, 0), settings, 0);
@@ -71,6 +76,8 @@ test('artwork has fully transparent edges, mirrored geometry and no opaque backg
         if (!x || !y || x === 63 || y === 63) assert.equal(left[at + 3], 0);
     }
     assert.ok(ink > 300 && ink < 1500);
+    const active = icon('left', true);
+    assert.ok(active.filter((v, i) => i % 4 === 3 && v > 0).length > ink);
     assert.equal(layout('hud:353x203', {}).size, 24);
     assert.equal(layout('map:800x480', {}), null);
     assert.equal(layout('hud:8000x480', {}), null);

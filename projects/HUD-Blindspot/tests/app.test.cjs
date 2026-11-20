@@ -40,16 +40,28 @@ test('boot/background operation works with no RHMI screen; enable persists and s
         statusLaneChangeWarning: { statusLaneChangeWarningLeft: 1, statusLaneChangeWarningRight: 0 } });
     handlers[MIRROR_EVENT]({ requestExteriorMirrorDisplayWarningLeftHand: 1 });
     settings.set('enabled', true); timer();
-    assert.equal(clients.length, 1); assert.equal(clients[0].layers.size, 1);
+    assert.equal(clients.length, 1); assert.equal(clients[0].layers.size, 2);
     assert.equal(bg.model().warning.left, 1);
     // Foreground is only controls/display; it does not own the warning timer.
-    let draws = 0;
+    let draws = 0; const opened = [], labels = {};
     await implementation.start({ background: bg, settings, log: quiet,
-        ui: { onClick(id, fn) { buttons[id] = fn; }, image() { draws++; } },
+        ui: { onClick(id, fn) { buttons[id] = fn; }, image() { draws++; },
+            async open(name) { opened.push(name); }, async text(name, value) { labels[name] = value; } },
         canvas() { return { clear() {}, text() {}, roundRect() {} }; }, loop(state, fps, fn) { fn(); } });
     for (const [id] of spec.screens[0].buttons) assert.equal(typeof buttons[id], 'function');
     buttons.BTN_SIZE(); buttons.BTN_OPACITY(); buttons.BTN_HEIGHT(); assert.equal(draws, 1);
     assert.equal(settings.get('size'), 'medium'); assert.equal(settings.get('opacity'), '85'); assert.equal(settings.get('height'), '60');
+    await buttons.BTN_POSITION(); assert.equal(opened[0], 'POSITION'); assert.match(labels.POS_TARGET, /Move: Both/);
+    for (const item of spec.screens.find(s => s.name === 'POSITION').items) assert.equal(typeof buttons[item[1]], 'function');
+    await buttons.POS_RIGHT(); await buttons.POS_UP();
+    const both = settings.get('positions'); assert.ok(both.left.x > 0 && both.right.x > 0);
+    assert.ok(both.left.y < 0 && both.right.y < 0);
+    await buttons.POS_TARGET(); assert.equal(settings.get('positionTarget'), 'left');
+    await buttons.POS_RESET(); assert.deepEqual(settings.get('positions').left, { x: 0, y: 0 });
+    assert.deepEqual(settings.get('positions').right, both.right);
+    await buttons.POS_DOWN(); assert.ok(settings.get('positions').left.y > 0);
+    await buttons.POS_LEFT(); assert.ok(settings.get('positions').left.x < 0);
+    await buttons.POS_BACK(); assert.equal(opened[1], 'MAIN');
     buttons.BTN_DISABLE(); assert.equal(clients[0].closed, true); assert.equal(bg.model().enabled, false);
     platform.emit('shutdown'); await Promise.resolve(); await Promise.resolve();
     assert.equal(cleared, true); assert.equal(proxyClosed, true);

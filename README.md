@@ -62,7 +62,7 @@ Build the optional helper with `python tools/package-root.py`.
 | Better Lighting | [Ambient colours and effects](projects/BettetLighting/README.md) | 0.1.0 |
 | Camera Cluster | [Front/rear camera in the cluster](projects/Camera-Cluster/README.md) | 0.1.0 |
 | External Lights | [Exterior light shows and lamp tests](projects/external_lights/README.md) | 0.2.6 |
-| HUD Blindspot | [Small translucent left/right warnings on the windshield HUD](projects/HUD-Blindspot/README.md) | 0.1.0 |
+| HUD Blindspot | [Small translucent left/right warnings on the windshield HUD](projects/HUD-Blindspot/README.md) | 0.1.1 |
 
 [Download the reviewed packages](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14).
 Refresh this repository's **Releases** source in MGU Store. Camera Cluster
@@ -79,19 +79,21 @@ AI Terminal and AWD Diagnostic remain available. The emulator is excluded.
 
 External Lights [0.2.6 update](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.6) adds the documented powertrain Park signal and displays raw selector values and sample ages. Park/speed safeguards remain enforced.
 
-## HUD Blindspot 0.1.0
+## HUD Blindspot 0.1.1
 
 An ID7 prototype with small amber left/right blind-spot warning graphics on
 the windshield HUD, transparent backgrounds, adjustable opacity/size/height,
-and saved Enable/Disable controls. Runs in the background after enablement;
+and saved Enable/Disable controls. Position buttons move either side or both
+left/right/up/down and reset the selected offsets. Faint outlines stay visible
+while enabled and fill on an active warning. Runs in the background after enablement;
 disabled on first install. Uses read-only lane-change warning subscriptions.
 
-Install [HUD Blindspot 0.1.0](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.0)
+Install [HUD Blindspot 0.1.1](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.1)
 from this repository's Releases source. Also add `robertnisipeanu/idrive-apps`
 and install Cluster renderer 0.6.7 or newer. The release includes a Store catalog
 declaring the dependency. [Source, setup and signal limits](projects/HUD-Blindspot/README.md).
 
-14 offline tests and Node 8 checks pass. Not car-tested; exact physical mirror
+18 offline tests and Node 8 checks pass. Not car-tested; exact physical mirror
 LED parity and signal timing are unverified. Supplemental information only:
 the factory warnings remain the reference. No BMW SDK, firmware, keys or
 emulator are included in this app.

@@ -44,29 +44,27 @@ class Overlay {
         if (!cr.ready || this.blocked) return;
         const geometry = layout(cr.targets, settings);
         if (!geometry) { this.clear(); this.target = 'HUD target not supported'; return; }
-        if (!snapshot.valid || !snapshot.active || !(snapshot.left || snapshot.right)) { this.clear(); return; }
         const key = JSON.stringify(geometry);
         if (key !== this.geometry) { this.clear(); this.geometry = key; }
         for (const side of ['left', 'right']) {
-            const severity = snapshot[side];
-            if (!severity) {
-                if (this.layers[side]) cr.drop(this.layers[side]);
-                delete this.layers[side]; delete this.sent[side]; continue;
-            }
+            // Outlines are enabled-position markers, never an all-clear or a
+            // claim that the warning source is available. Only fresh valid
+            // active warning data can fill them.
+            const severity = snapshot.valid && snapshot.active ? snapshot[side] : 0;
+            const filled = severity > 0 && (severity === 1 || Math.floor(now / 250) % 2 === 0);
+            const opacity = geometry.opacity * (filled ? 1 : 0.22);
             if (!this.layers[side]) {
                 const ref = cr.image({ target: 'hud', klass: 'overlay', z: 0,
-                    x: geometry[side], y: geometry.y, w: geometry.size, h: geometry.size,
-                    iw: 64, ih: 64, fps: 4, opacity: geometry.opacity,
+                    x: geometry[side], y: geometry[side + 'Y'], w: geometry.size, h: geometry.size,
+                    iw: 64, ih: 64, fps: 4, opacity: opacity,
                     visible: false, exclusive: false, prewarm: false, contend: false, guide_hold: false });
                 if (!ref) { this.blocked = true; this.target = 'HUD layer refused'; this.clear(); return; }
                 this.layers[side] = ref;
-                cr.pixels(ref, null, this.frames[side][severity >= 2 ? 1 : 0]);
             }
-            const visible = severity === 1 || Math.floor(now / 250) % 2 === 0;
-            const stamp = severity + ':' + visible;
+            const stamp = filled + ':' + opacity;
             if (this.sent[side] !== stamp) {
-                cr.pixels(this.layers[side], null, this.frames[side][severity >= 2 ? 1 : 0]);
-                cr.set(this.layers[side], { visible: visible }); this.sent[side] = stamp;
+                cr.pixels(this.layers[side], null, this.frames[side][filled ? 1 : 0]);
+                cr.set(this.layers[side], { visible: true, opacity: opacity }); this.sent[side] = stamp;
             }
         }
     }

@@ -1,4 +1,21 @@
-# HUD Blindspot 0.1.0 validation — November 20, 2026
+# HUD Blindspot 0.1.1 validation — November 20, 2026
+
+0.1.1 adds a native Position button menu: select both, left or right; move in
+four directions; reset selected offsets; return to the main page. Offsets are
+saved in the existing atomic settings storage. Bounds prevent side swapping
+and off-viewport movement, including corrupted settings. At a boundary a
+reverse press moves immediately; invisible excess offsets never accumulate.
+The Position page is a native list, not a second renderer canvas.
+
+At the owner's request, enabled indicators now remain as faint outlines and
+fill on a fresh active warning. Acute warnings alternate filled/outlined at
+2 Hz. Missing/stale/invalid data removes fills but leaves idle position-marker
+outlines. The outlines do not indicate warning-system availability or safety.
+
+New checks exercise independent/group movement, reset and persisted settings,
+viewport limits at all sizes, reverse movement at edges, malformed values,
+and the overlay's actual separate x/y placement. Background/foreground tests
+press every position control and verify native menu navigation.
 
 Built and tested offline on the development PC. No connection to the HU, no
 vehicle commands, no coding or firmware modifications, and no car test.
@@ -22,16 +39,16 @@ its MPL-2.0 notice and full licence. Runtime MIT notices are packaged.
 
 ## Offline checks
 
-14 tests passed with the owner's schema supplied, none skipped:
+18 tests passed with the owner's schema supplied, none skipped:
 
 - Independent left/right warning and acute levels, numeric and named enums.
 - Standby/unavailable/invalid/inconsistent states, unknown values, partial
-  updates, stale samples and clock reversal never authorize an icon.
+  updates, stale samples and clock reversal never authorize active fill.
 - Provider loss clears data and late notifications are ignored until the
   provider returns. Raw mirror-event values never create icons by themselves.
 - Only subscriptions are used; no setters, diagnostic methods or commands.
 - Enable/disable, transparency, small dimensions, placement, independent
-  clearing, urgent blinking and no upload for unchanged steady warnings.
+  fill clearing, urgent filled/outline blinking and no upload for unchanged steady warnings.
 - Disconnect clears cached layers so stale artwork is not replayed; unsupported
   targets and mapping-guard refusal remove graphics without overriding guards.
 - Background-only boot without RHMI, all footer controls, saved-setting hooks,
@@ -54,6 +71,7 @@ coexistence with each installed HUD app. The typed warning state is not proof
 of an electrically lit mirror LED. The renderer tests use a simulated peer;
 they do not emulate the KOMBI, RAMSES or the car's warning system.
 
-Missing/stale signal data removes indicators and is reported as unavailable.
+Missing/stale signal data removes active fills and is reported as unavailable;
+only faint position-marker outlines remain while enabled.
 The absence of a graphic never means the lane is safe. This release does not
 change the factory warning system. ID8 is not claimed or packaged.
