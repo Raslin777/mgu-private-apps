@@ -17,7 +17,7 @@ own notices; the builder's default font remains the kit's original assets.
 the optional native GPU renderer. Cluster renderer itself is an independently
 installed upstream dependency; its executable is not bundled here.
 
-BMW's SOME/IP schema was consulted locally to identify read-only subscriptions
+The owner's uploaded SOME/IP schema (689 interfaces) was consulted locally to identify read-only subscriptions
 and warning enums. ISTA's BDC definitions and Diag.sqlite corroborate the D347
 mirror-status read, field order and value meanings. No ISTA file, BMW schema,
 SDK, firmware or key is distributed. The app sends only the fixed 22 D347

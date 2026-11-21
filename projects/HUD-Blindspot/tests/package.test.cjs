@@ -35,4 +35,6 @@ test('Store archive contains the current source, required licences, ID7 metadata
     const signal = manifest.proxies['de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance'];
     assert.equal(signal.attributes.lateralCollisionAvoidanceQualifiers, 's');
     assert.deepEqual(signal.broadcasts, ['requestWarningSteeringWheelExteriorMirror']);
+    const secondary = manifest.proxies['de.bmw.dass.driverassistanceapplications.AssistedDrivingViewLateralCollisionAvoidance'];
+    assert.deepEqual(secondary.broadcasts, ['assistedDrivingViewLcaInput']);
 });

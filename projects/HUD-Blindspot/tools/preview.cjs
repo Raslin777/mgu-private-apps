@@ -25,7 +25,9 @@ fs.writeFileSync(path.join(dir, preview.name + '.png'), cv.png());
 }
 const screen = new Canvas(1600, 520);
 draw(screen, { enabled: true, size: 'small', opacity: '65', height: '50',
-    warning: { source: 'UDS D347', valid: true, active: true, left: 1, right: 0, age: 120, mirror: { left: 1, right: 0 } },
+    warning: { source: 'SOME/IP', valid: true, active: true, left: 1, right: 0, age: 120, mirror: { left: 1, right: 0 } },
+    someip: { available: true, age: 120, sample: { qualifier: 9, left: 1, right: 0 }, mirror: { left: 1, right: 0 } },
+    assisted: { available: true, age: 160, sample: { qualifier: 9, left: 1, right: 0 } },
     diagnostic: { trace: { tx: '22 D3 47', rx: '62 D3 47 01 00', origin: 'ecu', rawTasu: 'F0 F2 71 01 0F 0B 40 00 05 62 D3 47 01 00' } },
     overlay: { link: 'Connected', target: 'shown' } });
 fs.writeFileSync(path.join(dir, 'app.png'), screen.png());

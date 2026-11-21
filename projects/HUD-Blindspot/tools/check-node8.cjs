@@ -12,13 +12,18 @@ if (!/^v8\./.test(process.version)) {
 const app = path.join(__dirname, '..', 'apps', 'hud_blindspot');
 for (const file of fs.readdirSync(app).filter(f => /\.js$/.test(f)))
     new vm.Script('(function(require,module,exports){' + fs.readFileSync(path.join(app, file), 'utf8') + '\n})', { filename: file });
-const { WarningState } = require(path.join(app, 'warnings'));
+const { WarningState, selectSomeip } = require(path.join(app, 'warnings'));
 const { icon, layout } = require(path.join(app, 'artwork'));
 let now = 0;
 const state = new WarningState(() => now);
 state.update({ qualifierLaneChangeWarning: 9, statusLaneChangeWarning: { statusLaneChangeWarningLeft: 1, statusLaneChangeWarningRight: 0 } });
 assert.equal(state.snapshot().left, 1);
 now = 2100; assert.equal(state.snapshot().valid, false);
+const assisted = new WarningState(() => now);
+assisted.updateView({ statusLaneChangeWarning: { qualifierLaneChangeWarning: 9,
+    statusLaneChangeWarningLeft: 0, statusLaneChangeWarningRight: 2 } });
+assert.equal(selectSomeip(state.snapshot(), assisted.snapshot()).source, 'SOME/IP Assisted View');
+assert.equal(assisted.snapshot().right, 2);
 assert.equal(icon('left', false).length, 64 * 64 * 4);
 assert.equal(layout('map:1088x480,hud:800x480', {}).width, 800);
 const position = require(path.join(app, 'position'));

@@ -1,4 +1,4 @@
-# HUD Blindspot 0.1.2
+# HUD Blindspot 0.1.3
 
 A faint amber outline on each side of the **windshield HUD**, filling when the
 car reports a blind-spot/lane-change warning on that side. The default icons
@@ -23,7 +23,7 @@ factory mirror warnings or checking before changing lanes.
    instructions. This app uses the existing renderer; it does not install a
    second RAMSES participant or patch firmware.
 2. Add `Raslin777/mgu-private-apps` as a **Releases** source, refresh, and
-   install **HUD Blindspot 0.1.2**. Alternatively use the release's `catalog.json`.
+   install **HUD Blindspot 0.1.3**. Alternatively use the release's `catalog.json`.
    The catalog and package declare the renderer dependency.
 3. Open **HUD Blindspot**, then press **Enable**. It is disabled on first
    install. **Disable** removes this app's HUD layers and closes its renderer
@@ -36,10 +36,11 @@ factory mirror warnings or checking before changing lanes.
    scene. **Reset selected position** restores the selected side(s) to their
    original offsets under the current Height preset. **Back** returns to the
    app page. All offsets and the selected side are saved across restarts.
-6. In **Settings > Warning data source**, use **Auto: D347, then SOME/IP**
+6. In **Settings > Warning data source**, use **Auto: SOME/IP, then D347**
    (default), **D347 mirror status only**, or **SOME/IP only**. Auto prefers
-   a fresh BDC mirror-status read and uses fresh SOME/IP data if the read is
-   unavailable. The center-screen page identifies which source is in use.
+   fresh SOME/IP notifications. If they are absent or stale, it uses the
+   read-only BDC mirror-status fallback. Diagnostic polling pauses while
+   either SOME/IP notification feed is fresh. The center-screen page identifies which source is in use.
 
 Movement is clamped inside a conservative viewport and each icon's half of
 the HUD. Repeated presses at an edge do not accumulate invisible movement.
@@ -57,7 +58,36 @@ This package targets **iDrive 7 only**. The upstream renderer also supports
 iDrive 8, but this app's RHMI package and the owner's checked signal schema
 are ID7; this is not an ID8 release.
 
-## Read-only BDC mirror status (new in 0.1.2)
+## Source selection update (0.1.3)
+
+Auto selects the first fresh warning feed in this order:
+
+1. **LateralCollisionAvoidance** (`0xD005`), typed qualifier notifications.
+2. **AssistedDrivingViewLateralCollisionAvoidance** (`0x3043`), the
+   `statusLaneChangeWarning` portion of `assistedDrivingViewLcaInput`.
+3. **BDC D347**, the existing read-only diagnostic fallback.
+
+D347 polling pauses while either SOME/IP feed is fresh. Fresh explicit
+fault/unavailable or malformed data from the selected higher-priority feed
+remains unavailable; fallback does not hide it. Fresh clear/standby primary
+data is also authoritative even if the secondary feed differs. Explicit
+D347-only and SOME/IP-only modes remain available; SOME/IP-only considers
+the two notification feeds in the same order and sends no diagnostic requests.
+
+The center-screen page shows both providers, decoded qualifier/left/right
+values, sample ages, raw primary mirror-event values and last diagnostic
+TX/RX bytes. These details never appear on the HUD.
+
+The owner-supplied **someip-interfaces (1).json** was checked directly:
+689 interfaces, 674 instance definitions and 7,411 datatypes; SHA-256
+`645b929b273197df927dd45d958e82c823a3f1f843f71587baaba03c205c74e4`.
+Its primary LCA and TASU interface definitions match the earlier firmware
+reference. Its Assisted View event defines a nested lane-change qualifier
+and left/right enums; the new adapter uses those exact types. Lane-departure,
+side-collision and object-ID fields are ignored. The schema itself is not
+included. A defined interface does not prove its provider is running.
+
+## Read-only BDC mirror status (introduced in 0.1.2)
 
 ISTA's `bdc_g11.prg`, `bdc_g05.prg`, `bdc.prg` and `bcp_sp21.prg` all define
 `AUSSENSPIEGEL_HC2` / DID **D347**, with separate one-byte left/right mirror
@@ -69,10 +99,10 @@ BDC 40. A positive reply must be exactly `62 D3 47 LL RR`. Values 00 = off,
 01 = steady on, 02/03/04 = blinking levels, 0D = display fault, FF = invalid.
 The latter two are never treated as active warnings. The three blinking
 levels are shown with this app's 2 Hz animation; exact OEM flash timing has
-not been established. A fresh positive mirror-fault/invalid reply is not
-masked by switching to the other source.
+not been established. When D347 is selected as the fallback or explicit source, a fresh positive
+mirror-fault/invalid reply remains unavailable.
 
-Reads run only while enabled and not in SOME/IP-only mode: one at a time,
+Reads run only while enabled and D347 is selected or needed as the fallback: one at a time,
 at least 250 ms after the previous response (at most four reads per second),
 with a 1.5 s hard deadline. Errors back off for 2 s. Unsupported/range/access-
 denied/session refusals stop further reads until Disable/Enable or a source
@@ -88,8 +118,8 @@ agreement, ECU support and delivery while moving need car verification.
 
 ## SOME/IP and rendering evidence
 
-The recovered **018_030_018 reference firmware catalog**, not yet confirmed
-as the owner's installed HU version, lists:
+The owner-supplied **someip-interfaces (1).json** and recovered
+018_030_018 reference both define the primary LCA contract:
 
 - `de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance`,
   instance `1`.
@@ -104,11 +134,11 @@ as the owner's installed HU version, lists:
   These are **UInt8 with no enum**, default 15, in the catalog. They are
   retained as raw values on the app page; they do not drive the overlay.
 
-The separate `Downloads/someip-interfaces.json` lacks this service, and the
-owner confirmed that file came from a similar car. Neither reference proves
-which services the running HU exposes. Both interfaces are optional at
-installation: either source can work independently; neither provides invented
-warning data when missing.
+The earlier `Downloads/someip-interfaces.json` lacks LCA; the owner confirmed
+that file came from a similar car. The new owner-supplied catalog contains
+both LCA feeds. All three interfaces are optional at installation, so missing
+providers do not prevent another source from working. No source invents
+warning data when unavailable.
 
 When SOME/IP is selected, the app follows the documented **lane-change warning states**.
 Exact electrical mirror-LED parity has not been established. It does not
@@ -157,15 +187,15 @@ python tools/build.py
 npm test
 npm run check:node8
 npm run preview
-python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.2
+python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.3
 ```
 
 For the Node 8 check, supply the official Windows Node v8.16.2 executable at
 `.cache/node8.exe`. For the optional local schema check, set
-`HUD_BLINDSPOT_SCHEMA` to the local reference JSON catalog path. The optional
+`HUD_BLINDSPOT_SCHEMA` to the owner-supplied `someip-interfaces (1).json` path. The optional
 PRG check uses `HUD_BLINDSPOT_PRG` pointing to `bdc_g11.prg`. Neither input is committed.
 
-Artifacts: `dist/hud_blindspot@0.1.2.tgz`, `dist/catalog.json`,
+Artifacts: `dist/hud_blindspot@0.1.3.tgz`, `dist/catalog.json`,
 `dist/SHA256SUMS.txt`. Previews in `preview/` are synthetic placement examples,
 not photographs or evidence of car operation. The package contains no BMW
 SDK, firmware, schema, keys, native renderer binary or emulator.
@@ -178,7 +208,8 @@ against the actual mirror LEDs using a passenger or recorded logs. Do not
 operate the setup controls while driving. The app log is `hud_blindspot.log`
 in its platform data directory; it records decoded and raw mirror state changes. The app
 page shows the selected source, last UDS/TASU replies and sample age. For
-the first check use D347-only mode and confirm actual `62 D3 47 LL RR`
+the first check use SOME/IP-only mode and inspect provider, qualifier and
+left/right updates. Separately test D347-only mode for actual `62 D3 47 LL RR`
 responses. Unsupported/negative replies are not evidence of a clear lane.
 Check stale/unavailable behavior and renderer coexistence before relying on
 the overlay as supplemental information. An absent icon is not an assurance

@@ -177,8 +177,12 @@ class MirrorReader {
 function selectSource(uds, someip, mode) {
     const signal = Object.assign({ source: 'SOME/IP', authoritative: false }, someip);
     if (mode === 'someip') return signal;
-    if (mode === 'uds' || uds.authoritative || uds.valid) return uds;
-    if (signal.valid) return Object.assign({}, signal, { source: 'SOME/IP fallback' });
-    return Object.assign({}, uds, { reason: uds.reason || signal.reason || 'No warning data' });
+    if (mode === 'uds') return uds;
+    // A fresh primary notification includes explicit unavailable/fault states.
+    // Do not replace those states with a reassuring secondary sample.
+    if (signal.authoritative || signal.valid) return signal;
+    if (uds.authoritative || uds.valid) return Object.assign({}, uds, { fallbackReason: signal.reason });
+    return Object.assign({}, signal, { fallbackReason: uds.reason,
+        reason: signal.reason || uds.reason || 'No warning data' });
 }
 module.exports = { MirrorReader, decodeD347, selectSource, IFACE, INSTANCE, POLL_MS, BACKOFF_MS };

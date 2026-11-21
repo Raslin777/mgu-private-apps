@@ -2,7 +2,7 @@
   "id": "hud_blindspot",
   "title": "HUD Blindspot",
   "description": "Small translucent left and right blind-spot warnings on the HUD. Supplemental, read-only, not car-tested.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "vendor": "Raslin777",
   "loggingId": "HDBS",
   "iconGlyph": "BS",
@@ -21,6 +21,11 @@
       "lateralCollisionAvoidanceQualifiers": "s",
       "_broadcasts": ["requestWarningSteeringWheelExteriorMirror"]
     },
+    "de.bmw.dass.driverassistanceapplications.AssistedDrivingViewLateralCollisionAvoidance": {
+      "_instances": "1",
+      "_optional": "Secondary read-only lane-change warning notifications",
+      "_broadcasts": ["assistedDrivingViewLcaInput"]
+    },
     "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
       "_instances": "SystemFunctionsInternalTasuInst1",
       "_optional": "Read-only D347 mirror status; SOME/IP can work without this interface",
@@ -30,7 +35,7 @@
   },
   "settings": [
     {"key": "enabled", "label": "Enable HUD blind-spot indicators", "type": "bool", "default": false},
-    {"key": "source", "label": "Warning data source", "type": "choice", "default": "auto", "options": [["auto", "Auto: D347, then SOME/IP"], ["uds", "D347 mirror status only"], ["someip", "SOME/IP only"]]},
+    {"key": "source", "label": "Warning data source", "type": "choice", "default": "auto", "options": [["auto", "Auto: SOME/IP, then D347"], ["uds", "D347 mirror status only"], ["someip", "SOME/IP only"]]},
     {"key": "size", "label": "Indicator size", "type": "choice", "default": "small", "options": [["small", "Small"], ["medium", "Medium"], ["large", "Large"]]},
     {"key": "opacity", "label": "Indicator opacity", "type": "choice", "default": "65", "options": [["45", "45%"], ["65", "65%"], ["85", "85%"]]},
     {"key": "height", "label": "Indicator height", "type": "choice", "default": "50", "options": [["40", "Higher"], ["50", "Middle"], ["60", "Lower"]]},

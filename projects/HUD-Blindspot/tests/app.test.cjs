@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const EventEmitter = require('node:events');
 const app = path.join(__dirname, '..', 'apps', 'hud_blindspot');
 const spec = JSON.parse(fs.readFileSync(path.join(app, 'app.json')));
-const { FIELD, MIRROR_EVENT } = require('../apps/hud_blindspot/warnings');
+const { FIELD, MIRROR_EVENT, VIEW_IFACE, VIEW_EVENT } = require('../apps/hud_blindspot/warnings');
 const quiet = { info() {}, warn() {} };
 
 test('boot/background operation works with no RHMI screen; enable persists and shutdown releases all resources', async () => {
@@ -94,7 +94,20 @@ test('declared fields, event outputs, enum values and access modes match the loc
         assert.deepEqual(spec.signals[tasu]._methods, ['sendTasuRequest']);
         assert.deepEqual(spec.signals[tasu]._broadcasts, ['sendTasuResponse']);
         assert.ok(schema.interfaces[tasu].methods.sendTasuRequest);
-        assert.equal(Object.keys(spec.signals).length, 2);
+        const view = schema.interfaces[VIEW_IFACE];
+        assert.equal(view.serviceId, 0x3043); assert.equal(schema.instanceIDs[VIEW_IFACE]['1'], 1);
+        assert.deepEqual(spec.signals[VIEW_IFACE]._broadcasts, [VIEW_EVENT]);
+        const warningRef = view.events[VIEW_EVENT].outputs.find(v => v.name === 'statusLaneChangeWarning').dataRef;
+        const warning = schema.datatypes[warningRef];
+        for (const [member, expected] of [
+            ['qualifierLaneChangeWarning', { FUNCTION_ACTIVE: 9, FUNCTION_ACTIVE_REDUCED: 11, FUNCTION_AVAILABLE: 1,
+                FUNCTION_AVAILABLE_REDUCED: 3, FUNCTION_NOT_AVAILABLE: 14, FUNCTION_NOT_AVAILABLE_ERROR: 6, INVALID: 15 }],
+            ['statusLaneChangeWarningLeft', left],
+            ['statusLaneChangeWarningRight', { ACUTE_WARNING_RIGHT: 2, FUNCTION_ACTIVE_ACUTE_WARNING_RIGHT_AND_STEERING: 3,
+                NO_WARNING_RIGHT: 0, WARNING_RIGHT: 1 }]]) {
+            assert.deepEqual(schema.datatypes[warning.members.find(m => m.name === member).dataRef].items, expected);
+        }
+        assert.equal(Object.keys(spec.signals).length, 3);
     });
 
 test('manifest has saved controls, background start and only the read adapter can call the diagnostic method', () => {
@@ -146,4 +159,54 @@ test('without the LCA interface, the background uses the real D347 reader and re
     assert.equal(model.model().warning.left, 2); assert.equal(model.model().warning.right, 0);
     assert.equal(model.model().diagnostic.trace.rx, '62 D3 47 04 00');
     settings.set('enabled', false); assert.equal(model.model().warning.valid, false);
+});
+
+test('Auto avoids diagnostic polling with fresh SOME/IP, uses D347 after expiry, and resumes the primary without masking faults', async t => {
+    let implementation, timer, now = 0; const handlers = {}, calls = [], events = new EventEmitter();
+    t.after(() => events.emit('shutdown'));
+    const values = Object.fromEntries(spec.settings.map(s => [s.key, s.default])), listeners = [];
+    const settings = { get: k => values[k], onChange: fn => listeners.push(fn),
+        set(k, v) { values[k] = v; listeners.forEach(fn => fn()); } };
+    const warnings = require('../apps/hud_blindspot/warnings');
+    class State extends warnings.WarningState { constructor() { super(() => now); } }
+    class Renderer extends EventEmitter {
+        constructor() { super(); this.ready = true; this.targets = 'hud:800x480'; this.ref = 0; }
+        connect() {} close() {} image() { return ++this.ref; } pixels() {} set() {} drop() {}
+    }
+    vm.runInNewContext(fs.readFileSync(path.join(app, 'main.js'), 'utf8'), {
+        require(name) {
+            if (name === './kit/mgu') return { run(config) { implementation = config; } };
+            if (name === './cluster_render_client') return { ClusterRender: Renderer };
+            if (name === './warnings') return Object.assign({}, warnings, { WarningState: State });
+            return require(path.join(app, name));
+        }, process: new EventEmitter(), Date, setInterval(fn) { timer = fn; return 1; }, clearInterval() {}
+    });
+    const bg = await implementation.background({ app: events, settings, log: quiet, signals: {
+        async proxy() { return { shutdown() {} }; }, async onAvailable(p, fn) { fn(true); },
+        async on(p, name, fn) { handlers[name] = fn; },
+        async call(p, name, args) {
+            calls.push(args);
+            setImmediate(() => handlers.sendTasuResponse({ errorCode: 'NO_ERROR',
+                udsResponse: Buffer.from([0xf0, 0xf2, 0x71, 1, 0xf, 0xb, 0x40, 0, 5, 0x62, 0xd3, 0x47, 0, 1]) }));
+            return 'NO_ERROR';
+        }
+    } });
+    const emit = (left, qualifier = 9) => handlers[FIELD]({ qualifierLaneChangeWarning: qualifier,
+        statusLaneChangeWarning: { statusLaneChangeWarningLeft: left, statusLaneChangeWarningRight: 0 } });
+    emit(1); settings.set('enabled', true); timer();
+    assert.equal(calls.length, 0); assert.equal(bg.model().warning.source, 'SOME/IP');
+    now = 1500;
+    handlers[VIEW_EVENT]({ statusLaneChangeWarning: { qualifierLaneChangeWarning: 9,
+        statusLaneChangeWarningLeft: 0, statusLaneChangeWarningRight: 2 } });
+    assert.equal(bg.model().warning.source, 'SOME/IP');
+    now = 2001; timer(); assert.equal(calls.length, 0);
+    assert.equal(bg.model().warning.source, 'SOME/IP Assisted View'); assert.equal(bg.model().warning.right, 2);
+    now = 3501; timer(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.length, 1); assert.equal(bg.model().warning.source, 'UDS D347');
+    assert.equal(bg.model().warning.right, 1); assert.match(bg.model().warning.fallbackReason, /stale/);
+    emit(2); timer(); assert.equal(bg.model().warning.source, 'SOME/IP'); assert.equal(bg.model().warning.left, 2);
+    assert.equal(calls.length, 1);
+    emit(0, 6); timer(); assert.equal(bg.model().warning.valid, false); assert.equal(calls.length, 1);
+    assert.equal(bg.model().warning.source, 'SOME/IP');
+    assert.equal(bg.model().someip.sample.qualifier, 6); assert.equal(bg.model().someip.available, true);
 });

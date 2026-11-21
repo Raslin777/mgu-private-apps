@@ -98,16 +98,22 @@ test('provider loss and disabling discard late replies; stale snapshots never re
     await flush(); f.reader.tick(true); f.reader.receive(raw(positive(2, 0))); assert.equal(f.reader.snapshot().left, 2);
     f.state.available(false); assert.equal(f.reader.snapshot().valid, false);
 });
-test('Auto prefers D347, falls back to SOME/IP, and never masks a fresh mirror fault with another source', () => {
+test('Auto prefers SOME/IP, falls back to D347, and preserves explicit faults from the selected source', () => {
     const signal = { valid: true, active: true, left: 1, right: 0 };
     const uds = { source: 'UDS D347', authoritative: true, valid: true, active: true, left: 0, right: 1 };
-    assert.equal(selectSource(uds, signal, 'auto').source, 'UDS D347');
+    assert.equal(selectSource(uds, signal, 'auto').source, 'SOME/IP');
     assert.equal(selectSource(uds, signal, 'someip').source, 'SOME/IP');
     const absent = { source: 'UDS D347', valid: false, authoritative: false, reason: 'No answer' };
-    assert.equal(selectSource(absent, signal, 'auto').source, 'SOME/IP fallback');
+    assert.equal(selectSource(absent, signal, 'auto').source, 'SOME/IP');
     assert.equal(selectSource(absent, signal, 'uds').valid, false);
     const fault = Object.assign({}, uds, { valid: false, active: false, reason: 'Mirror display fault (0D)' });
-    assert.equal(selectSource(fault, signal, 'auto').valid, false);
+    assert.equal(selectSource(fault, { valid: false, reason: 'Warning data stale' }, 'auto').valid, false);
+    const fallback = selectSource(uds, { valid: false, reason: 'Provider unavailable' }, 'auto');
+    assert.equal(fallback.source, 'UDS D347'); assert.equal(fallback.fallbackReason, 'Provider unavailable');
+    const primaryFault = { valid: false, authoritative: true, active: false, left: 0, right: 0, reason: 'Blind-spot system unavailable' };
+    assert.equal(selectSource(uds, primaryFault, 'auto').source, 'SOME/IP');
+    assert.equal(selectSource(uds, primaryFault, 'auto').valid, false);
+    assert.equal(selectSource(uds, primaryFault, 'uds').source, 'UDS D347');
 });
 test('the app screen shows UDS TX, decoded RX and raw TASU bytes without putting them on the HUD', () => {
     const drawn = [];
@@ -118,6 +124,18 @@ test('the app screen shows UDS TX, decoded RX and raw TASU bytes without putting
     assert.ok(drawn.some(x => x.s.includes('22 D3 47') && x.s.includes('62 D3 47 01 04')));
     assert.ok(drawn.some(x => x.s.includes(trace.rawTasu)));
     assert.ok(drawn.every(x => x.y < 520));
+});
+
+test('the status page reports primary SOME/IP independently of the selected diagnostic source', () => {
+    const lines = [], cv = { clear() {}, roundRect() {}, text(s) { lines.push(s); } };
+    const model = { enabled: true, warning: { source: 'UDS D347', valid: true, active: true,
+        left: 1, right: 0, mirror: { left: 4, right: 4 }, age: 10 }, overlay: { link: 'Connected' } };
+    draw(cv, model);
+    assert.ok(lines.some(s => s.includes('mirror raw L -- R --')));
+    lines.length = 0;
+    model.someip = { available: true, age: 50, sample: { qualifier: 9, left: 0, right: 2 }, mirror: { left: 15, right: 3 } };
+    draw(cv, model);
+    assert.ok(lines.some(s => s.includes('Provider available | Q 9 L 0 R 2 | age 50 ms | mirror raw L 15 R 3')));
 });
 
 const prg = process.env.HUD_BLINDSPOT_PRG;

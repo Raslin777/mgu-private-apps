@@ -2,6 +2,8 @@
 const IFACE = 'de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance';
 const FIELD = 'lateralCollisionAvoidanceQualifiers';
 const MIRROR_EVENT = 'requestWarningSteeringWheelExteriorMirror';
+const VIEW_IFACE = 'de.bmw.dass.driverassistanceapplications.AssistedDrivingViewLateralCollisionAvoidance';
+const VIEW_EVENT = 'assistedDrivingViewLcaInput';
 const MAX_AGE_MS = 2000;
 const QUALIFIERS = { FUNCTION_AVAILABLE: 1, FUNCTION_AVAILABLE_REDUCED: 3,
     FUNCTION_ACTIVE: 9, FUNCTION_ACTIVE_REDUCED: 11,
@@ -34,8 +36,18 @@ class WarningState {
         this.mirror = { at: this.now(), left: data && data.requestExteriorMirrorDisplayWarningLeftHand,
             right: data && data.requestExteriorMirrorDisplayWarningRightHand };
     }
+    updateView(raw) {
+        const data = raw && (raw[VIEW_EVENT] || raw);
+        const sides = data && data.statusLaneChangeWarning;
+        // Only the lane-change struct is a blind-spot warning source. Ignore
+        // adjacent lane-departure, side-collision and object-ID structures.
+        this.update({ qualifierLaneChangeWarning: sides && sides.qualifierLaneChangeWarning,
+            statusLaneChangeWarning: sides });
+    }
     snapshot() {
         const s = this.sample;
+        const age = s ? this.now() - s.at : null;
+        const fresh = !!(this.available && s && age >= 0 && age <= MAX_AGE_MS);
         let reason = '';
         if (!this.available) reason = 'Warning signal unavailable';
         else if (!s) reason = 'Waiting for warning data';
@@ -44,9 +56,17 @@ class WarningState {
         else if ([0, 1, 2, 3].indexOf(s.left) < 0 || [0, 1, 2, 3].indexOf(s.right) < 0) reason = 'Warning value unknown';
         const active = !reason && (s.qualifier === 9 || s.qualifier === 11);
         if (!reason && !active && (s.left || s.right)) reason = 'Warning data inconsistent';
-        return { valid: !reason, active: !!active && !reason, reason: reason,
+        return { valid: !reason, authoritative: fresh, available: this.available,
+            active: !!active && !reason, reason: reason,
             left: active && !reason ? s.left : 0, right: active && !reason ? s.right : 0,
             age: s ? Math.max(0, this.now() - s.at) : null, sample: s, mirror: this.mirror };
     }
 }
-module.exports = { WarningState, IFACE, FIELD, MIRROR_EVENT, MAX_AGE_MS };
+function selectSomeip(primary, assisted) {
+    const first = Object.assign({ source: 'SOME/IP' }, primary);
+    if (first.authoritative || first.valid) return first;
+    if (assisted.authoritative || assisted.valid) return Object.assign({}, assisted,
+        { source: 'SOME/IP Assisted View', fallbackReason: first.reason });
+    return first;
+}
+module.exports = { WarningState, selectSomeip, IFACE, FIELD, MIRROR_EVENT, VIEW_IFACE, VIEW_EVENT, MAX_AGE_MS };
