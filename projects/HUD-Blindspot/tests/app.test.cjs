@@ -122,10 +122,10 @@ test('manifest has saved controls, background start and only the read adapter ca
     }
 });
 
-test('without the LCA interface, the background uses the real D347 reader and releases it when disabled', async t => {
+test('with D347 test mode chosen, the background uses the real D347 reader and releases it when disabled', async t => {
     let implementation; const handlers = {}, calls = [], appEvents = new EventEmitter();
     t.after(() => appEvents.emit('shutdown'));
-    const values = Object.fromEntries(spec.settings.map(s => [s.key, s.default])); values.enabled = true;
+    const values = Object.fromEntries(spec.settings.map(s => [s.key, s.default])); values.enabled = true; values.source = 'uds';
     const listeners = [];
     const settings = { get: k => values[k], onChange: fn => listeners.push(fn),
         set(k, v) { values[k] = v; listeners.forEach(fn => fn(k, v)); } };
@@ -161,14 +161,14 @@ test('without the LCA interface, the background uses the real D347 reader and re
     settings.set('enabled', false); assert.equal(model.model().warning.valid, false);
 });
 
-test('Auto avoids diagnostic polling with fresh SOME/IP, uses D347 after expiry, and resumes the primary without masking faults', async t => {
+test('Auto holds the SOME/IP field value, never polls diagnostics, and D347 runs only in its test mode', async t => {
     let implementation, timer, now = 0; const handlers = {}, calls = [], events = new EventEmitter();
     t.after(() => events.emit('shutdown'));
     const values = Object.fromEntries(spec.settings.map(s => [s.key, s.default])), listeners = [];
     const settings = { get: k => values[k], onChange: fn => listeners.push(fn),
         set(k, v) { values[k] = v; listeners.forEach(fn => fn()); } };
     const warnings = require('../apps/hud_blindspot/warnings');
-    class State extends warnings.WarningState { constructor() { super(() => now); } }
+    class State extends warnings.WarningState { constructor(_, maxAge) { super(() => now, maxAge); } }
     class Renderer extends EventEmitter {
         constructor() { super(); this.ready = true; this.targets = 'hud:800x480'; this.ref = 0; }
         connect() {} close() {} image() { return ++this.ref; } pixels() {} set() {} drop() {}
@@ -194,19 +194,22 @@ test('Auto avoids diagnostic polling with fresh SOME/IP, uses D347 after expiry,
     const emit = (left, qualifier = 9) => handlers[FIELD]({ qualifierLaneChangeWarning: qualifier,
         statusLaneChangeWarning: { statusLaneChangeWarningLeft: left, statusLaneChangeWarningRight: 0 } });
     emit(1); settings.set('enabled', true); timer();
+    assert.equal(calls.length, 0); assert.equal(bg.model().warning.source, 'SOME/IP'); assert.equal(bg.model().warning.left, 1);
+    // A field is state: with no further notification the warning is still the warning a minute later.
+    now = 60000; timer();
     assert.equal(calls.length, 0); assert.equal(bg.model().warning.source, 'SOME/IP');
-    now = 1500;
+    assert.equal(bg.model().warning.valid, true); assert.equal(bg.model().warning.left, 1);
+    assert.equal(bg.model().someip.held, true); assert.equal(bg.model().someip.updates, 1);
+    emit(0); timer(); assert.equal(bg.model().warning.left, 0); assert.equal(bg.model().warning.valid, true);
+    emit(0, 6); timer(); assert.equal(bg.model().warning.valid, false); assert.equal(calls.length, 0);
+    assert.equal(bg.model().warning.source, 'SOME/IP'); assert.equal(bg.model().someip.sample.qualifier, 6);
+    // The Assisted View event still expires.
     handlers[VIEW_EVENT]({ statusLaneChangeWarning: { qualifierLaneChangeWarning: 9,
         statusLaneChangeWarningLeft: 0, statusLaneChangeWarningRight: 2 } });
-    assert.equal(bg.model().warning.source, 'SOME/IP');
-    now = 2001; timer(); assert.equal(calls.length, 0);
-    assert.equal(bg.model().warning.source, 'SOME/IP Assisted View'); assert.equal(bg.model().warning.right, 2);
-    now = 3501; timer(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(bg.model().assisted.valid, true); now += 2001; assert.equal(bg.model().assisted.valid, false);
+    // Only the explicit test mode sends a diagnostic request.
+    settings.set('source', 'uds'); timer(); await new Promise(resolve => setImmediate(resolve));
     assert.equal(calls.length, 1); assert.equal(bg.model().warning.source, 'UDS D347');
-    assert.equal(bg.model().warning.right, 1); assert.match(bg.model().warning.fallbackReason, /stale/);
-    emit(2); timer(); assert.equal(bg.model().warning.source, 'SOME/IP'); assert.equal(bg.model().warning.left, 2);
-    assert.equal(calls.length, 1);
-    emit(0, 6); timer(); assert.equal(bg.model().warning.valid, false); assert.equal(calls.length, 1);
-    assert.equal(bg.model().warning.source, 'SOME/IP');
-    assert.equal(bg.model().someip.sample.qualifier, 6); assert.equal(bg.model().someip.available, true);
+    settings.set('source', 'auto'); now += 5000; timer(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.length, 1); assert.equal(bg.model().warning.source, 'SOME/IP');
 });

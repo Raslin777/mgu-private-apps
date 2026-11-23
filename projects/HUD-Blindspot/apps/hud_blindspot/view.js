@@ -23,11 +23,13 @@ function draw(cv, model) {
     const raw = primary.mirror || (s.source === 'SOME/IP' ? s.mirror : null);
     const value = v => v == null ? '--' : String(v).slice(0, 12);
     cv.text(('SOME/IP: ' + (primary.available ? 'Provider available' : 'Provider unavailable') +
+        ' | updates ' + (primary.updates || 0) +
         ' | Q ' + value(sample.qualifier) + ' L ' + value(sample.left) + ' R ' + value(sample.right) +
         ' | age ' + (primary.age == null ? '--' : primary.age + ' ms') +
         ' | mirror raw L ' + value(raw && raw.left) + ' R ' + value(raw && raw.right)).slice(0, 140), 44, 379, 20, '#edf4ff');
     const assisted = model.assisted || {}, viewSample = assisted.sample || {};
     cv.text('Assisted View: ' + (assisted.available ? 'Provider available' : 'Provider unavailable') +
+        ' | updates ' + (assisted.updates || 0) +
         ' | Q ' + value(viewSample.qualifier) + ' L ' + value(viewSample.left) + ' R ' + value(viewSample.right) +
         ' | age ' + (assisted.age == null ? '--' : assisted.age + ' ms'), 44, 403, 18, '#a6b5c8');
     if (trace) {
@@ -39,6 +41,10 @@ function draw(cv, model) {
             '  R ' + (raw && raw.right != null ? String(raw.right).slice(0, 12) : '--'), 44, 430, 19, '#a6b5c8');
         cv.text((diagnostic.reason || 'Waiting for signal').slice(0, 130), 44, 455, 20, '#a6b5c8');
     }
+    const st = diagnostic.stats;
+    if (st && st.sent) cv.text(('D347 reads: sent ' + st.sent + ', answered ' + st.answered + ', no answer ' + st.missed +
+        ', refused ' + st.refused + ', late ' + st.late + ' | last reply ' + (st.lastMs == null ? '--' : st.lastMs + ' ms') +
+        ', slowest ' + st.maxMs + ' ms' + (trace && trace.verdict ? ' | HU: ' + trace.verdict : '')).slice(0, 150), 800, 501, 17, '#a6b5c8');
     cv.text('Supplemental display. Keep using the factory mirror warnings.', 44, 501, 18, '#97a6ba');
 }
 module.exports = { draw };

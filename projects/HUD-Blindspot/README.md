@@ -23,7 +23,7 @@ factory mirror warnings or checking before changing lanes.
    instructions. This app uses the existing renderer; it does not install a
    second RAMSES participant or patch firmware.
 2. Add `Raslin777/mgu-private-apps` as a **Releases** source, refresh, and
-   install **HUD Blindspot 0.1.3**. Alternatively use the release's `catalog.json`.
+   install **HUD Blindspot 0.1.4**. Alternatively use the release's `catalog.json`.
    The catalog and package declare the renderer dependency.
 3. Open **HUD Blindspot**, then press **Enable**. It is disabled on first
    install. **Disable** removes this app's HUD layers and closes its renderer
@@ -104,12 +104,78 @@ mirror-fault/invalid reply remains unavailable.
 
 Reads run only while enabled and D347 is selected or needed as the fallback: one at a time,
 at least 250 ms after the previous response (at most four reads per second),
-with a 1.5 s hard deadline. Errors back off for 2 s. Unsupported/range/access-
-denied/session refusals stop further reads until Disable/Enable or a source
-change. The app does not change sessions, unlock access, test other addresses,
-or activate mirror LEDs. It yields for 2 s when other BDC diagnostic traffic
-is observed. All TASU traffic is shared; some negative replies cannot be
-uniquely attributed to a client. Avoid running other diagnostic apps at once.
+waiting up to 4 s for the reply once the head unit has accepted the request
+and 10 s overall (0.1.4; it was 1.5 s in total before, see below). Errors back
+off for 2 s. Unsupported/range/access-denied/session refusals stop further
+reads until Disable/Enable or a source change. The app does not change
+sessions, unlock access, test other addresses, or activate mirror LEDs. Other
+apps' BDC traffic is ignored: it neither answers nor cancels a read (0.1.4).
+All TASU traffic is shared; some negative replies cannot be uniquely
+attributed to a client. Avoid running other diagnostic apps at once.
+
+### 0.1.4: SOME/IP only (November 22, 2026)
+
+The owner does not want the display to depend on diagnostics. From 0.1.4:
+
+- **Auto uses SOME/IP only.** It takes the lane-change warning field, then the
+  Assisted View event. It never sends a diagnostic request and never falls
+  back to D347.
+- **D347 is a test mode.** It runs only when *Test: D347 diagnostics only* is
+  chosen in Settings.
+- **The primary value is held, not expired.** The primary source,
+  `lateralCollisionAvoidanceQualifiers`, is a SOME/IP *field* with a notifier
+  and no getter (owner's catalog: service `0xD005`, eventgroup 2). A field is
+  state: the last value notified is the current value. Earlier versions threw
+  the value away after 2 s, which shows "stale" almost all the time if the car
+  only notifies on change. The value is now kept for as long as the provider
+  is available, and dropped the moment it is not. The Assisted View source is
+  an event and still expires after 2 s.
+- **The page counts notifications.** Each SOME/IP line shows "updates N" and
+  the age of the last one, so one drive shows whether the car delivers the
+  service to the head unit at all, and whether it sends cyclically or only on
+  change.
+
+Trade-off of holding: if a notification were lost, an indicator could stay in
+its last state until the next one. The mirror lamps remain the warning to rely
+on.
+
+**Still unknown, and the main risk:** no program in the head-unit firmware
+image uses this service, so nothing shows that the driver-assistance unit
+offers it on the head unit's network. If the page says *Provider unavailable*
+with *updates 0* while the car's own blind-spot warning works, the service is
+not reaching the head unit, and no app change will fix that.
+
+### 0.1.4: "the UDS read never replies" (November 22, 2026)
+
+Reported from the car: the D347 read got no reply. No log from that run was
+available, so the cause below is the most likely one found by comparing this
+reader with code that does get BDC replies on the same car, not a confirmed
+diagnosis.
+
+- **The wait was too short.** The reader gave up 1.5 s after sending and then
+  ignored any answer that arrived later. External Lights, whose `22 F1 50` and
+  `22 D5 42` reads to the same BDC were answered on the owner's head unit,
+  waits 4 s for the reply and 10 s overall, and allows 8 s for the call. The
+  reader now uses those waits.
+- **A late answer was thrown away.** A `62 D3 47` reply arriving after its read
+  had been given up on is now used, and counted as "late".
+- **Other apps' traffic cancelled the read.** Any other reply from the BDC,
+  for example from a lighting app, ended the read and paused reads for 2 s.
+  Such frames are now ignored.
+- **A filter on unverified header bytes was removed.** Replies were dropped
+  when the first two bytes of the frame header did not match an assumed
+  pattern that has never been seen on this car. Frames are now matched only by
+  the answering unit and the reply itself.
+- **The page now counts.** The bottom line shows reads sent, answered, not
+  answered, refused and late, the last and slowest reply time, and the head
+  unit's verdict on the last request. One run on the car will show which of
+  the above it was, or that the BDC does not answer D347 at all.
+
+What the head unit itself requires of the request was checked in its
+diagnostic server's code:
+default session, service not deactivated, target not a tester or group
+address, at most 4,088 bytes. `F2 -> 40, 22 D3 47` meets all of that, so the
+request is not being refused on the head unit by that check.
 
 The app page retains the last TX, UDS RX and raw TASU RX, with the selected
 source, sample age and any fallback reason. The log records changed replies
@@ -187,7 +253,7 @@ python tools/build.py
 npm test
 npm run check:node8
 npm run preview
-python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.3
+python tools/catalog.py --base-url https://github.com/Raslin777/mgu-private-apps/releases/download/hud-blindspot-v0.1.4
 ```
 
 For the Node 8 check, supply the official Windows Node v8.16.2 executable at
