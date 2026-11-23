@@ -1,0 +1,8 @@
+.cache/
+dist/
+node_modules/
+__pycache__/
+*.log
+*.pem
+*.key
+.local/

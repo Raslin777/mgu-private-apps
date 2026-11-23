@@ -1,0 +1,315 @@
+{
+ "id": "road_sight",
+ "title": "Road Sight",
+ "description": "Lists everything the car reports about what it sees: lanes, signs, traffic lights, objects and warnings. Read-only, not car-tested.",
+ "version": "0.1.0",
+ "vendor": "Raslin777",
+ "loggingId": "RDST",
+ "iconGlyph": "RS",
+ "autostart": false,
+ "screens": [
+  {
+   "name": "MAIN",
+   "kind": "canvas",
+   "title": "Road Sight",
+   "buttons": [
+    [
+     "BTN_PREV",
+     "Previous"
+    ],
+    [
+     "BTN_NEXT",
+     "Next"
+    ],
+    [
+     "BTN_OVERVIEW",
+     "Overview"
+    ],
+    [
+     "BTN_LIVE",
+     "Live only"
+    ],
+    [
+     "BTN_MORE",
+     "More lines"
+    ],
+    [
+     "BTN_LOG",
+     "Log all"
+    ]
+   ]
+  }
+ ],
+ "signals": {
+  "de.bmw.environmentalmodel.LaneBoundariesLegacy2": {
+   "_instances": "1",
+   "_optional": "Lanes: LaneBoundariesLegacy2",
+   "_broadcasts": [
+    "laneMarkingEgoLeftHandGeometry",
+    "laneMarkingEgoLeftHandProperty",
+    "laneMarkingEgoRightHandGeometry",
+    "laneMarkingEgoRightHandProperty",
+    "laneMarkingExtensionLeftRight",
+    "laneMarkingList",
+    "laneMarkingNext"
+   ]
+  },
+  "de.bmw.environmentalmodel.LaneBoundariesLegacy": {
+   "_instances": "1",
+   "_optional": "Lanes: LaneBoundariesLegacy",
+   "_broadcasts": [
+    "LaneBoundariesExtensionNextLeftRight",
+    "LaneList",
+    "LaneMarkingEGOLeftHandGeometry",
+    "LaneMarkingEGOLeftHandProperty",
+    "LaneMarkingEGORightHandGeometry",
+    "LaneMarkingEGORightHandProperty",
+    "laneMarkingAdjacentProperty",
+    "laneMarkingNextLeftGeometry",
+    "laneMarkingNextRightGeometry"
+   ]
+  },
+  "de.bmw.sensors.road.SemanticLaneDescription": {
+   "_instances": "1",
+   "_optional": "Lanes: SemanticLaneDescription",
+   "_broadcasts": [
+    "semanticLaneDescription"
+   ]
+  },
+  "de.bmw.environmentalmodel.LaneBoundaries": {
+   "_instances": "1",
+   "_optional": "Lanes: LaneBoundaries",
+   "_broadcasts": [
+    "LaneBoundaries",
+    "LaneChange"
+   ]
+  },
+  "de.bmw.environmentalmodel.Lanes": {
+   "_instances": "1",
+   "_optional": "Lanes: Lanes",
+   "_broadcasts": [
+    "LaneChange",
+    "LanesDetection",
+    "VerticalCurvatureEgoLane"
+   ]
+  },
+  "de.bmw.environmentalmodel.LaneChangeInformation": {
+   "_instances": "1",
+   "_optional": "Lanes: LaneChangeInformation",
+   "_broadcasts": [
+    "laneChange"
+   ]
+  },
+  "de.bmw.environmentalmodel.Road": {
+   "_instances": "1",
+   "_optional": "Lanes: Road",
+   "_broadcasts": [
+    "LaneChangeFused"
+   ]
+  },
+  "de.bmw.environmentalmodel.LanePreciseLocalization": {
+   "_instances": "1",
+   "_optional": "Lanes: LanePreciseLocalization",
+   "_broadcasts": [
+    "LplData"
+   ]
+  },
+  "de.bmw.environmentalmodel.SignRecognitionFrontCameraLegacy": {
+   "_instances": "1",
+   "_optional": "Signs: SignRecognitionFrontCameraLegacy",
+   "_broadcasts": [
+    "RecognitionTrafficSignCamera",
+    "recognitionTrafficSignCamera2"
+   ]
+  },
+  "de.bmw.environmentalmodel.SignRecognitionFrontCamera": {
+   "_instances": "1",
+   "_optional": "Signs: SignRecognitionFrontCamera",
+   "_broadcasts": [
+    "TrafficSignRecognitionFrontCamera"
+   ]
+  },
+  "de.bmw.dass.TrafficSignRecognition": {
+   "_instances": "1",
+   "_optional": "Signs: TrafficSignRecognition",
+   "_broadcasts": [
+    "TrafficSignRecognition"
+   ]
+  },
+  "de.bmw.environmentalmodel.TrafficLightRecognitionFrontCameraLegacy": {
+   "_instances": "1",
+   "_optional": "Lights: TrafficLightRecognitionFrontCameraLegacy",
+   "_broadcasts": [
+    "RecognitionTrafficLightCamera"
+   ]
+  },
+  "de.bmw.sensors.objects.RecogFrontCameraLightDetection": {
+   "_instances": "1",
+   "_optional": "Lights: RecogFrontCameraLightDetection",
+   "_broadcasts": [
+    "MainBeamAssistantDataObject11",
+    "MainBeamAssistantDataObject12",
+    "MainBeamAssistantDataObject15",
+    "controlHighBeamAssistant",
+    "mEObjectID1",
+    "mEObjectID2",
+    "mainBeamAssistantDataObject1",
+    "mainBeamAssistantDataObject10",
+    "mainBeamAssistantDataObject13",
+    "mainBeamAssistantDataObject14",
+    "mainBeamAssistantDataObject2",
+    "mainBeamAssistantDataObject3",
+    "mainBeamAssistantDataObject4",
+    "mainBeamAssistantDataObject5",
+    "mainBeamAssistantDataObject6",
+    "mainBeamAssistantDataObject7",
+    "mainBeamAssistantDataObject8",
+    "mainBeamAssistantDataObject9"
+   ]
+  },
+  "de.bmw.environmentalmodel.DAADataServer": {
+   "_instances": "1",
+   "_optional": "Objects: DAADataServer",
+   "_broadcasts": [
+    "FASView",
+    "LaneInformation",
+    "ObjectAssignment",
+    "ObjectInformation1",
+    "ObjectInformation2",
+    "ObjectListMerged",
+    "RoadModel"
+   ]
+  },
+  "de.bmw.environmentalmodel.ObjectRecognitionFrontCamera": {
+   "_instances": "1",
+   "_optional": "Objects: ObjectRecognitionFrontCamera",
+   "_broadcasts": [
+    "ObjectMovement",
+    "ObjectMovementStandardDeviation",
+    "ObjectPosition",
+    "ObjectPositionStandardDeviation",
+    "ObjectProbability",
+    "ObjectRecognition",
+    "ObjectSensorSpecificFrontCamera"
+   ]
+  },
+  "de.bmw.environmentalmodel.ObjectRecognitionFrontCamera2": {
+   "_instances": "1",
+   "_optional": "Objects: ObjectRecognitionFrontCamera2",
+   "_broadcasts": [
+    "ObjectMovement",
+    "ObjectMovementStandardDeviation",
+    "ObjectPolarCoordinates",
+    "ObjectPosition",
+    "ObjectPositionStandardDeviation",
+    "ObjectProbability",
+    "ObjectRecognition",
+    "ObjectSensorSpecificFrontCamera"
+   ]
+  },
+  "de.bmw.environmentalmodel.FusedSensorDetectionData": {
+   "_instances": "1",
+   "_optional": "Objects: FusedSensorDetectionData",
+   "_broadcasts": [
+    "objects"
+   ]
+  },
+  "de.bmw.sensors.objects.RecogFrontCameraObjectlist": {
+   "_instances": "1",
+   "_optional": "Objects: RecogFrontCameraObjectlist",
+   "_broadcasts": [
+    "objectlistTCP"
+   ]
+  },
+  "de.bmw.dass.pad.communication.ObjectListSuAAR": {
+   "_instances": "1",
+   "_optional": "Objects: ObjectListSuAAR",
+   "_broadcasts": [
+    "suAARObjectList"
+   ]
+  },
+  "de.bmw.dass.GapVehicleAhead": {
+   "_instances": "1",
+   "_optional": "Objects: GapVehicleAhead",
+   "DataFrontVehicle": "s",
+   "DataFrontVehicleExtended": "s",
+   "GapVehicleDrivingAhead": "s"
+  },
+  "de.bmw.dass.ParkDistanceInformation": {
+   "_instances": "1",
+   "_optional": "Objects: ParkDistanceInformation",
+   "FrontDistanceNotificationPDC2": "s",
+   "RearDistanceNotificationPDC2": "s"
+  },
+  "de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance": {
+   "_instances": "1",
+   "_optional": "Warnings: LateralCollisionAvoidance",
+   "lateralCollisionAvoidanceQualifiers": "s",
+   "_broadcasts": [
+    "requestWarningSteeringWheelExteriorMirror"
+   ]
+  },
+  "de.bmw.dass.driverassistanceapplications.AssistedDrivingViewLateralCollisionAvoidance": {
+   "_instances": "1",
+   "_optional": "Warnings: AssistedDrivingViewLateralCollisionAvoidance",
+   "_broadcasts": [
+    "assistedDrivingViewLcaInput"
+   ]
+  },
+  "de.bmw.dass.AssistedDrivingViewFunctionInput": {
+   "_instances": "1",
+   "_optional": "Warnings: AssistedDrivingViewFunctionInput",
+   "_broadcasts": [
+    "assistedDrivingViewFunctionInputIbVip"
+   ]
+  },
+  "de.bmw.dass.pad.communication.AssistedDrivingViewLateralFunctionInput": {
+   "_instances": "1",
+   "_optional": "Warnings: AssistedDrivingViewLateralFunctionInput",
+   "_broadcasts": [
+    "lateralFunctionInputAssistedDrivingView"
+   ]
+  },
+  "de.bmw.environmentalmodel.environmentalconditions.Weather": {
+   "_instances": "1",
+   "_optional": "Conditions: Weather",
+   "RecognitionWeather": "s"
+  },
+  "de.bmw.environmentalmodel.environmentalconditions.BlockageAndWeatherFrontCameraMain": {
+   "_instances": "1",
+   "_optional": "Conditions: BlockageAndWeatherFrontCameraMain",
+   "_broadcasts": [
+    "blockageAndWeatherFrontcameraMain"
+   ]
+  },
+  "de.bmw.environmentalmodel.EgoMotionLegacy": {
+   "_instances": "1",
+   "_optional": "Conditions: EgoMotionLegacy",
+   "_broadcasts": [
+    "ProperMotionVehicle",
+    "ProperMotionVehicleStandardDeviation"
+   ]
+  },
+  "de.bmw.environmentalmodel.roadforesight.AutonomousDrivingOffboardRoadApproval": {
+   "_instances": "1",
+   "_optional": "Conditions: AutonomousDrivingOffboardRoadApproval",
+   "_broadcasts": [
+    "autonomousDrivingRoadApprovalOffboard"
+   ]
+  }
+ },
+ "settings": [
+  {
+   "key": "liveOnly",
+   "label": "Skip services that have sent nothing",
+   "type": "bool",
+   "default": false
+  },
+  {
+   "key": "logFirst",
+   "label": "Write the first value of each event to the log",
+   "type": "bool",
+   "default": true
+  }
+ ]
+}
