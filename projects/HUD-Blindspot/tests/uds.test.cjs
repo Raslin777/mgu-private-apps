@@ -48,15 +48,37 @@ test('the reader sends only fixed F2 -> BDC 40 / 22 D347 and never overlaps or p
     f.reader.receive(raw(positive(0, 0))); assert.equal(f.reader.snapshot().valid, true); assert.equal(f.reader.snapshot().left, 0);
     f.reader.tick(false); assert.equal(f.reader.snapshot().valid, false);
 });
-test('wrong ECU, DID or tester cannot authorize a warning, and visible foreign BDC traffic yields the link', async t => {
+test('a wrong ECU or DID cannot authorize a warning, and other BDC traffic neither answers nor cancels the read', async t => {
     const f = await fixture(); t.after(() => f.reader.stop());
-    f.reader.tick(true); f.reader.receive(raw(positive(1, 1), 0x43)); f.reader.receive(raw(positive(1, 1), 0x40, 0xf4));
+    f.reader.tick(true); f.reader.receive(raw(positive(1, 1), 0x43));
     assert.equal(f.reader.snapshot().valid, false); assert.ok(f.reader.active);
-    f.reader.receive(raw([0x62, 0xd5, 0x42, 1])); assert.equal(f.reader.active, null);
-    assert.equal(f.reader.trace.origin, 'shared-link'); assert.match(f.reader.reason, /Other BDC/);
-    await flush(); f.state.now = BACKOFF_MS - 1; f.reader.tick(true); assert.equal(f.state.calls.length, 1);
-    f.state.now++; f.reader.tick(true); assert.equal(f.state.calls.length, 2);
-    f.reader.receive(raw(positive(1, 0))); assert.equal(f.reader.snapshot().valid, true);
+    // Another app reading a different identifier on the BDC: ignored, our read keeps waiting.
+    f.reader.receive(raw([0x62, 0xd5, 0x42, 1])); f.reader.receive(raw([0x6e, 0xd5, 0x42]));
+    assert.ok(f.reader.active); assert.equal(f.reader.snapshot().valid, false); assert.equal(f.state.calls.length, 1);
+    f.reader.receive(raw(positive(1, 0))); assert.equal(f.reader.active, null);
+    assert.equal(f.reader.snapshot().valid, true); assert.equal(f.reader.snapshot().left, 1);
+    assert.equal(f.reader.stats.answered, 1); assert.equal(f.reader.stats.missed, 0);
+});
+test('the reply wait matches the transport that works on the car, and a slow answer is still used', async t => {
+    const { REPLY_MS, HARD_MS, CALL_MS } = require('../apps/hud_blindspot/uds');
+    assert.ok(REPLY_MS >= 4000 && HARD_MS >= 10000 && CALL_MS >= 8000);
+    const f = await fixture({ deadlineMs: 0 }); t.after(() => f.reader.stop());        // production waits
+    assert.equal(f.reader.replyMs, REPLY_MS); assert.equal(f.reader.hardMs, HARD_MS);
+    f.reader.tick(true); await flush();
+    f.state.now = 2600;                                                             // later than the old 1.5 s limit
+    f.reader.receive(raw(positive(0, 2)));
+    assert.equal(f.reader.snapshot().valid, true); assert.equal(f.reader.snapshot().right, 2);
+    assert.equal(f.reader.stats.lastMs, 2600); assert.equal(f.reader.trace.ms, 2600);
+    assert.equal(f.reader.trace.verdict, 'NO_ERROR');
+});
+test('an answer that arrives after its read was given up on is used and counted as late', async t => {
+    const f = await fixture({ deadlineMs: 10 }); t.after(() => f.reader.stop());
+    f.reader.tick(true); await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(f.reader.active, null); assert.equal(f.reader.stats.missed, 1); assert.equal(f.reader.snapshot().valid, false);
+    f.reader.receive(raw(positive(4, 0)));
+    assert.equal(f.reader.stats.late, 1); assert.equal(f.reader.snapshot().valid, true); assert.equal(f.reader.snapshot().left, 2);
+    assert.equal(f.reader.trace.origin, 'ecu (late)');
+    f.reader.receive(raw([0x7f, 0x22, 0x31])); assert.equal(f.reader.blocked, false, 'a stray negative reply with no read waiting changes nothing');
 });
 test('negative UDS and outer TASU errors stay distinct; unsupported/access-denied reads latch until re-enabled', async t => {
     for (const code of [0x11, 0x31, 0x33]) {
@@ -98,22 +120,20 @@ test('provider loss and disabling discard late replies; stale snapshots never re
     await flush(); f.reader.tick(true); f.reader.receive(raw(positive(2, 0))); assert.equal(f.reader.snapshot().left, 2);
     f.state.available(false); assert.equal(f.reader.snapshot().valid, false);
 });
-test('Auto prefers SOME/IP, falls back to D347, and preserves explicit faults from the selected source', () => {
+test('Auto never uses diagnostics; D347 is used only when chosen explicitly', () => {
     const signal = { valid: true, active: true, left: 1, right: 0 };
     const uds = { source: 'UDS D347', authoritative: true, valid: true, active: true, left: 0, right: 1 };
     assert.equal(selectSource(uds, signal, 'auto').source, 'SOME/IP');
     assert.equal(selectSource(uds, signal, 'someip').source, 'SOME/IP');
-    const absent = { source: 'UDS D347', valid: false, authoritative: false, reason: 'No answer' };
-    assert.equal(selectSource(absent, signal, 'auto').source, 'SOME/IP');
-    assert.equal(selectSource(absent, signal, 'uds').valid, false);
-    const fault = Object.assign({}, uds, { valid: false, active: false, reason: 'Mirror display fault (0D)' });
-    assert.equal(selectSource(fault, { valid: false, reason: 'Warning data stale' }, 'auto').valid, false);
-    const fallback = selectSource(uds, { valid: false, reason: 'Provider unavailable' }, 'auto');
-    assert.equal(fallback.source, 'UDS D347'); assert.equal(fallback.fallbackReason, 'Provider unavailable');
+    const missing = selectSource(uds, { valid: false, reason: 'Warning signal unavailable' }, 'auto');
+    assert.equal(missing.source, 'SOME/IP'); assert.equal(missing.valid, false);
+    assert.equal(missing.reason, 'Warning signal unavailable'); assert.equal(missing.fallbackReason, undefined);
+    assert.equal(selectSource(uds, { valid: false }, 'auto').reason, 'No warning data');
     const primaryFault = { valid: false, authoritative: true, active: false, left: 0, right: 0, reason: 'Blind-spot system unavailable' };
-    assert.equal(selectSource(uds, primaryFault, 'auto').source, 'SOME/IP');
     assert.equal(selectSource(uds, primaryFault, 'auto').valid, false);
     assert.equal(selectSource(uds, primaryFault, 'uds').source, 'UDS D347');
+    const absent = { source: 'UDS D347', valid: false, authoritative: false, reason: 'No answer' };
+    assert.equal(selectSource(absent, signal, 'uds').valid, false);
 });
 test('the app screen shows UDS TX, decoded RX and raw TASU bytes without putting them on the HUD', () => {
     const drawn = [];
@@ -135,7 +155,7 @@ test('the status page reports primary SOME/IP independently of the selected diag
     lines.length = 0;
     model.someip = { available: true, age: 50, sample: { qualifier: 9, left: 0, right: 2 }, mirror: { left: 15, right: 3 } };
     draw(cv, model);
-    assert.ok(lines.some(s => s.includes('Provider available | Q 9 L 0 R 2 | age 50 ms | mirror raw L 15 R 3')));
+    assert.ok(lines.some(s => s.includes('Provider available | updates 0 | Q 9 L 0 R 2 | age 50 ms | mirror raw L 15 R 3')));
 });
 
 const prg = process.env.HUD_BLINDSPOT_PRG;

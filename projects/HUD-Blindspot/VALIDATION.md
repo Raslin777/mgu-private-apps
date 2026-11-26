@@ -1,3 +1,32 @@
+# HUD Blindspot 0.1.4 validation — November 22, 2026
+
+0.1.4 changes only the D347 reader's waiting and reply matching (README,
+"0.1.4"). Built and tested offline; nothing was run on the car, so whether it
+cures the missing reply is **not verified**.
+
+- 36 tests, 34 pass, 2 skipped (the two that need local BMW files). New or
+  changed: a reply arriving 2.6 s after the request is used; the waits are at
+  least 4 s / 10 s / 8 s; other BDC traffic neither answers nor cancels a
+  read; an answer after a given-up read is used and counted; counters and the
+  head unit's verdict are recorded.
+- Node 8.16.2 check passes. `dist/hud_blindspot@0.1.4.tgz` builds SDK-free.
+- `dist/catalog.json` was **not** regenerated: it still lists 0.1.3, because
+  the catalog tool needs the release address and nothing was published.
+
+Also in 0.1.4: Auto is SOME/IP only (no diagnostic fallback), D347 runs only
+in its explicit test mode, the primary field value is held while its provider
+is available, and the page counts notifications. Covered by tests: Auto never
+calls the diagnostic method, a held warning is still valid a minute later, a
+fault qualifier still clears it, the Assisted View event still expires, and
+D347 is polled only in test mode.
+
+Not verified, and decisive: whether the car offers service `0xD005` to the
+head unit. Nothing in the firmware image uses it.
+
+The 0.1.3 notes below still apply except where they mention the 1.5 s deadline,
+yielding to other BDC traffic, the 2 s expiry of the primary source, and D347
+as an automatic fallback.
+
 # HUD Blindspot 0.1.3 validation — November 20, 2026
 
 Built and tested offline. No HU connection, live UDS request, vehicle coding or firmware modification was performed.

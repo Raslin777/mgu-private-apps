@@ -9,7 +9,9 @@ const Position = require('./position');
 const { MirrorReader, selectSource } = require('./uds');
 mgu.run({
     async background(ctx) {
-        const warning = new WarningState(), assisted = new WarningState();
+        // The primary source is a field (held while its provider is there); the
+        // Assisted View source is an event (expires).
+        const warning = new WarningState(undefined, Infinity), assisted = new WarningState();
         const overlay = new Overlay(() => new ClusterRender('hud_blindspot'), ctx.log);
         let stopped = false, reader;
         const values = () => ({ enabled: ctx.settings.get('enabled'), size: ctx.settings.get('size'),
@@ -22,9 +24,7 @@ mgu.run({
             if (stopped) return;
             try {
                 const settings = values();
-                const primary = someip();
-                reader.tick(settings.enabled === true && (settings.source === 'uds' ||
-                    settings.source === 'auto' && !primary.authoritative && !primary.valid));
+                reader.tick(settings.enabled === true && settings.source === 'uds');
                 overlay.update(selected(), settings, Date.now());
             }
             catch (e) { overlay.close(); ctx.log.warn('HUD overlay: ' + String(e.message || e)); }
@@ -40,7 +40,7 @@ mgu.run({
         await Promise.all([source.start(), viewSource.start(), reader.start()]); tick();
         return { model: () => Object.assign(values(), { warning: selected(), someip: warning.snapshot(),
                 assisted: assisted.snapshot(),
-                diagnostic: { reason: reader.reason, trace: reader.trace },
+                diagnostic: { reason: reader.reason, trace: reader.trace, stats: reader.stats, link: reader.available },
                 overlay: { link: overlay.link, target: overlay.target } }),
             hudTargets: () => overlay.client && overlay.client.targets || 'hud:800x480', stop: stop };
     },

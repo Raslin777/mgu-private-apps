@@ -3,6 +3,10 @@ const { MAX_AGE_MS } = require('./warnings');
 const IFACE = 'com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu';
 const INSTANCE = 'SystemFunctionsInternalTasuInst1';
 const POLL_MS = 250, BACKOFF_MS = 2000;
+// Waits copied from the transport that has returned BDC replies on the owner's
+// car (External Lights): 4 s for the reply once the head unit has accepted the
+// request, 10 s overall and after a "response pending", 8 s for the call itself.
+const REPLY_MS = 4000, HARD_MS = 10000, CALL_MS = 8000;
 const hex = data => Array.prototype.map.call(data || [], b => ('0' + b.toString(16)).slice(-2)).join(' ').toUpperCase();
 function bytes(value) {
     if (value && value.data && !Buffer.isBuffer(value)) return bytes(value.data);
@@ -30,9 +34,12 @@ class MirrorReader {
     constructor(signals, log, change, options) {
         const opts = options || {};
         this.signals = signals; this.log = log; this.change = change;
-        this.now = opts.now || Date.now; this.deadlineMs = opts.deadlineMs || 1500;
+        this.now = opts.now || Date.now;
+        // deadlineMs (tests): one short wait for both the reply and the overall limit.
+        this.replyMs = opts.deadlineMs || REPLY_MS; this.hardMs = opts.hardMs || opts.deadlineMs || HARD_MS;
+        this.stats = { sent: 0, answered: 0, refused: 0, missed: 0, late: 0, lastMs: null, maxMs: 0 };
         this.p = null; this.available = false; this.stopped = false; this.enabled = false;
-        this.active = null; this.sending = false; this.blocked = false; this.nextAt = 0; this.quietUntil = 0;
+        this.active = null; this.sending = false; this.blocked = false; this.nextAt = 0;
         this.sample = null; this.trace = null; this.lastLog = ''; this.reason = 'Waiting for diagnostic link';
     }
     async start() {
@@ -71,7 +78,6 @@ class MirrorReader {
         }
         this.enabled = true;
         if (!this.p || !this.available || this.active || this.sending || this.blocked || this.now() < this.nextAt) return;
-        if (this.now() < this.quietUntil) { this.reason = 'Other BDC diagnostics active; waiting'; return; }
         this.read();
     }
     read() {
@@ -81,9 +87,13 @@ class MirrorReader {
         const exchange = { tx: '22 D3 47', rx: '', rawTasu: '', origin: '', at: this.now() };
         this.trace = exchange; this.reason = 'Reading D347 mirror status';
         let done = false;
-        const pending = { exchange: exchange, timer: null, finish: (reply, error, origin) => {
+        const pending = { exchange: exchange, timer: null, hard: null, finish: (reply, error, origin) => {
             if (done) return; done = true;
-            clearTimeout(pending.timer);
+            clearTimeout(pending.timer); clearTimeout(pending.hard);
+            exchange.ms = Math.max(0, this.now() - exchange.at);
+            if (reply) { this.stats.answered++; this.stats.lastMs = exchange.ms; this.stats.maxMs = Math.max(this.stats.maxMs, exchange.ms); }
+            else if (origin === 'timeout') this.stats.missed++;
+            else if (origin === 'tasu') this.stats.refused++;
             if (this.active === pending) this.active = null;
             if (this.stopped || !this.enabled) return;
             if (reply) exchange.rx = hex(reply);
@@ -105,29 +115,32 @@ class MirrorReader {
             if (key !== this.lastLog) { this.lastLog = key; this.log.info('blind-spot D347: ' + JSON.stringify(exchange)); }
             this.change();
         } };
-        this.active = pending;
-        pending.timer = setTimeout(() => pending.finish(null, 'D347 read timed out', 'timeout'), this.deadlineMs);
+        this.active = pending; this.stats.sent++;
+        pending.hard = setTimeout(() => pending.finish(null, 'No D347 answer in ' + this.hardMs + ' ms', 'timeout'), this.hardMs);
         this.sending = true;
         let sending;
         try {
             sending = this.signals.call(this.p, 'sendTasuRequest', {
                 sourceAddress: 0xf2, targetAddress: 0x40, serviceID: 0x22, subroutineID: 0,
                 udsDataLength: 2, udsData: Buffer.from([0xd3, 0x47]), deadlockTime: 0
-            }, 1200);
+            }, CALL_MS);
         } catch (e) { sending = Promise.reject(e); }
         Promise.resolve(sending).then(result => {
             this.sending = false;
             const value = result && typeof result === 'object' ? result.TasuErrorEnum : result;
+            exchange.verdict = value === undefined ? 'NO_ERROR' : String(value);
             if (value !== undefined && ['NO_ERROR', 'REQUEST_PENDING', '0', '1'].indexOf(String(value)) < 0)
                 pending.finish(null, 'TASU refused read: ' + String(value), 'tasu');
+            // The reply wait starts once the head unit has taken the request.
+            else if (!done) pending.timer = setTimeout(() => pending.finish(null, 'No D347 answer in ' + this.replyMs + ' ms', 'timeout'), this.replyMs);
         }, error => { this.sending = false; pending.finish(null, 'TASU read failed: ' + String(error.message || error), 'tasu'); });
     }
     receive(value) {
         if (this.stopped || !this.enabled) return;
         const raw = bytes(value && value.udsResponse !== undefined ? value.udsResponse : value);
-        // Native frames beginning F0 echo the tester in byte 1. Every app may
-        // receive the broadcast; an explicitly different tester isn't our reply.
-        if (raw[0] === 0xf0 && raw[1] !== 0xf2) return;
+        // Every app receives every reply. Only byte 6 (the unit that answered)
+        // and the reply itself identify a frame: the rest of the 9-byte header
+        // has not been seen on this car, so nothing is filtered on it.
         const pending = this.active;
         const capture = () => { if (pending) pending.exchange.rawTasu = hex(raw.slice(0, 64)); };
         const code = value && value.errorCode;
@@ -141,18 +154,28 @@ class MirrorReader {
         const reply = raw.slice(9);
         const match = reply[0] === 0x62 && reply[1] === 0xd3 && reply[2] === 0x47;
         const negative = reply.length >= 3 && reply[0] === 0x7f && reply[1] === 0x22;
-        if (!match && !negative) {
-            // Read-only does not mean independent of other diagnostic clients.
-            // Yield while another BDC request/session is visible on the link.
-            this.quietUntil = this.now() + BACKOFF_MS; this.sample = null;
-            this.reason = 'Other BDC diagnostics active; waiting';
-            if (pending) pending.finish(null, this.reason, 'shared-link');
-            else this.change();
+        // Another app's BDC traffic is not our answer and not a reason to give up
+        // on ours: ignore it and keep waiting, as the proven transport does.
+        if (!match && !negative) return;
+        if (!pending) {
+            // A D347 answer after its request was given up on is still the
+            // mirror status. Use it, and count it: it means the wait is too short.
+            if (match) {
+                this.stats.late++;
+                this.sample = Object.assign({ at: this.now() }, decodeD347(reply));
+                this.reason = this.sample.reason;
+                this.trace = { tx: '22 D3 47', rx: hex(reply), rawTasu: hex(raw.slice(0, 64)), origin: 'ecu (late)', at: this.now(), error: '' };
+                this.log.info('blind-spot D347 late answer: ' + this.trace.rx);
+                this.change();
+            }
             return;
         }
-        if (!pending) return;
         capture(); pending.exchange.rx = hex(reply);
-        if (negative && reply[2] === 0x78) return; // Still bounded by the original hard deadline.
+        if (negative && reply[2] === 0x78) {      // "response pending": the unit asks for more time
+            clearTimeout(pending.timer);
+            pending.timer = setTimeout(() => pending.finish(null, 'No D347 answer after response pending', 'timeout'), this.hardMs);
+            return;
+        }
         if (negative) pending.finish(reply, (NRC[reply[2]] || 'Read rejected') + ' (NRC ' + hex([reply[2]]) + ')', 'ecu');
         else pending.finish(reply, null, 'ecu');
     }
@@ -174,15 +197,11 @@ class MirrorReader {
         if (p && p.shutdown) Promise.resolve().then(() => p.shutdown()).catch(() => {});
     }
 }
+// Auto uses SOME/IP only. Diagnostics (D347) is used only when the owner
+// picks it explicitly: it is never an automatic fallback.
 function selectSource(uds, someip, mode) {
     const signal = Object.assign({ source: 'SOME/IP', authoritative: false }, someip);
-    if (mode === 'someip') return signal;
     if (mode === 'uds') return uds;
-    // A fresh primary notification includes explicit unavailable/fault states.
-    // Do not replace those states with a reassuring secondary sample.
-    if (signal.authoritative || signal.valid) return signal;
-    if (uds.authoritative || uds.valid) return Object.assign({}, uds, { fallbackReason: signal.reason });
-    return Object.assign({}, signal, { fallbackReason: uds.reason,
-        reason: signal.reason || uds.reason || 'No warning data' });
+    return Object.assign({}, signal, { reason: signal.reason || (signal.valid ? '' : 'No warning data') });
 }
-module.exports = { MirrorReader, decodeD347, selectSource, IFACE, INSTANCE, POLL_MS, BACKOFF_MS };
+module.exports = { MirrorReader, decodeD347, selectSource, IFACE, INSTANCE, POLL_MS, BACKOFF_MS, REPLY_MS, HARD_MS, CALL_MS };

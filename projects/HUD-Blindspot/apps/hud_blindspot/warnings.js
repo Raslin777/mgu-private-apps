@@ -17,7 +17,13 @@ function value(raw, names) {
     return null;
 }
 class WarningState {
-    constructor(now) { this.now = now || Date.now; this.available = false; this.sample = null; this.mirror = null; }
+    // maxAge: how long a sample counts. Events expire (MAX_AGE_MS, the default).
+    // A SOME/IP *field* is state: the last notified value is the current value
+    // until the provider goes away, so the app's primary source passes Infinity.
+    constructor(now, maxAge) {
+        this.now = now || Date.now; this.maxAge = maxAge == null ? MAX_AGE_MS : maxAge;
+        this.available = false; this.sample = null; this.mirror = null; this.updates = 0;
+    }
     availability(on) {
         this.available = on === true;
         if (!this.available) { this.sample = null; this.mirror = null; }
@@ -25,7 +31,7 @@ class WarningState {
     update(raw) {
         const data = raw && (raw[FIELD] || raw);
         const sides = data && data.statusLaneChangeWarning;
-        this.available = true;
+        this.available = true; this.updates++;
         this.sample = { at: this.now(), qualifier: value(data && data.qualifierLaneChangeWarning, QUALIFIERS),
             left: value(sides && sides.statusLaneChangeWarningLeft, LEFT),
             right: value(sides && sides.statusLaneChangeWarningRight, RIGHT) };
@@ -47,11 +53,11 @@ class WarningState {
     snapshot() {
         const s = this.sample;
         const age = s ? this.now() - s.at : null;
-        const fresh = !!(this.available && s && age >= 0 && age <= MAX_AGE_MS);
+        const fresh = !!(this.available && s && age >= 0 && age <= this.maxAge);
         let reason = '';
         if (!this.available) reason = 'Warning signal unavailable';
         else if (!s) reason = 'Waiting for warning data';
-        else if (this.now() - s.at > MAX_AGE_MS || this.now() < s.at) reason = 'Warning data stale';
+        else if (this.now() - s.at > this.maxAge || this.now() < s.at) reason = 'Warning data stale';
         else if ([1, 3, 9, 11].indexOf(s.qualifier) < 0) reason = 'Blind-spot system unavailable';
         else if ([0, 1, 2, 3].indexOf(s.left) < 0 || [0, 1, 2, 3].indexOf(s.right) < 0) reason = 'Warning value unknown';
         const active = !reason && (s.qualifier === 9 || s.qualifier === 11);
@@ -59,7 +65,8 @@ class WarningState {
         return { valid: !reason, authoritative: fresh, available: this.available,
             active: !!active && !reason, reason: reason,
             left: active && !reason ? s.left : 0, right: active && !reason ? s.right : 0,
-            age: s ? Math.max(0, this.now() - s.at) : null, sample: s, mirror: this.mirror };
+            age: s ? Math.max(0, this.now() - s.at) : null, sample: s, mirror: this.mirror,
+            updates: this.updates, held: this.maxAge === Infinity };
     }
 }
 function selectSomeip(primary, assisted) {

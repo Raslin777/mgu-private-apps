@@ -44,7 +44,8 @@ async function readCheck() {
         } }, log, function () {});
     await reader.start(); reader.tick(false); assert.equal(calls, 0);
     reader.tick(true); assert.equal(reader.snapshot().left, 2);
-    assert.equal(selectSource(reader.snapshot(), { valid: false }, 'auto').source, 'UDS D347');
+    assert.equal(selectSource(reader.snapshot(), { valid: false }, 'auto').source, 'SOME/IP');
+    assert.equal(selectSource(reader.snapshot(), { valid: false }, 'uds').source, 'UDS D347');
     assert.equal(decodeD347([0x62, 0xd3, 0x47, 0x0d, 0]).valid, false);
     await Promise.resolve(); reader.stop();
     console.log('Node ' + process.version + ': all app modules compile; positions, D347 reader/decoder, warning expiry and artwork execute');
