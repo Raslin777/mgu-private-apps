@@ -1,0 +1,13 @@
+{
+  "name": "mgu-road-sight",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only list of everything the car reports about what it sees (lanes, signs, lights, objects, warnings) for iDrive 7",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "check:node8": "node tools/check-node8.cjs",
+    "generate": "python tools/gen_services.py",
+    "build": "python tools/build.py",
+    "preview": "node tools/preview.cjs"
+  }
+}
