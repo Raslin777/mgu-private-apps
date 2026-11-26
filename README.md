@@ -62,7 +62,8 @@ Build the optional helper with `python tools/package-root.py`.
 | Better Lighting | [Ambient colours and effects](projects/BettetLighting/README.md) | 0.1.0 |
 | Camera Cluster | [Front/rear camera in the cluster](projects/Camera-Cluster/README.md) | 0.1.0 |
 | External Lights | [Exterior light shows and lamp tests](projects/external_lights/README.md) | 0.2.6 |
-| HUD Blindspot | [Small translucent left/right warnings on the windshield HUD](projects/HUD-Blindspot/README.md) | 0.1.3 |
+| HUD Blindspot | [Small translucent left/right warnings on the windshield HUD](projects/HUD-Blindspot/README.md) | 0.1.4 |
+| Road Sight | [Read-only viewer of what the car sees: lanes, signs, lights, objects](projects/Road-Sight/README.md) | 0.1.0 |
 
 [Download the reviewed packages](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14).
 Refresh this repository's **Releases** source in MGU Store. Camera Cluster
@@ -79,26 +80,42 @@ AI Terminal and AWD Diagnostic remain available. The emulator is excluded.
 
 External Lights [0.2.6 update](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.6) adds the documented powertrain Park signal and displays raw selector values and sample ages. Park/speed safeguards remain enforced.
 
-## HUD Blindspot 0.1.3
+## HUD Blindspot 0.1.4
 
 An ID7 prototype with small amber left/right blind-spot warning graphics on
 the windshield HUD, transparent backgrounds, adjustable opacity/size/height,
 and saved Enable/Disable controls. Position buttons move either side or both
 left/right/up/down and reset the selected offsets. Faint outlines stay visible
 while enabled and fill on an active warning. Runs in the background after enablement;
-disabled on first install. Auto prefers primary LCA SOME/IP warnings, then
-Assisted Driving View lane-change warnings, then the read-only BDC D347
-mirror-status read. Both notification contracts are verified against the
-owner-supplied JSON. D347-only and SOME/IP-only modes remain available. The
-app page shows both providers, decoded states, sample ages and raw UDS/TASU
+disabled on first install. Auto uses SOME/IP warnings only (primary LCA, then
+Assisted Driving View lane-change warnings) and never falls back to
+diagnostics. The primary lane-change warning is held while its provider is
+available instead of expiring after 2 s. The read-only BDC D347 mirror-status
+read is now an explicit test mode with longer waits and stricter reply
+matching. The app page shows providers, decoded states, sample ages and raw
 replies; no diagnostic session or actuator control is implemented.
 
-Install [HUD Blindspot 0.1.3](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.3)
+Install [HUD Blindspot 0.1.4](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.4)
 from this repository's Releases source. Also add `robertnisipeanu/idrive-apps`
 and install Cluster renderer 0.6.7 or newer. The release includes a Store catalog
 declaring the dependency. [Source, setup and signal limits](projects/HUD-Blindspot/README.md).
 
-34 offline tests and Node 8 checks pass. Not car-tested; exact physical mirror
+36 offline tests (34 pass, 2 skipped) and the Node 8 check pass. Not car-tested; exact physical mirror
 LED parity and signal timing are unverified. Supplemental information only:
 the factory warnings remain the reference. No BMW SDK, firmware, keys or
 emulator are included in this app.
+
+## Road Sight 0.1.0
+
+An ID7 app that lists everything the car reports about what it sees: lane
+markings, traffic signs, traffic lights, objects around the car, and the
+warnings built on them. It subscribes to 88 notifications across 29 services,
+with an overview page and one page per service showing every value received.
+It only listens: car-side services are declared as notifications only, and a
+test fails the build if that changes. It does not start by itself.
+
+Install [Road Sight 0.1.0](https://github.com/Raslin777/mgu-private-apps/releases/tag/road-sight-v0.1.0)
+from this repository's Releases source. [Source, services and limits](projects/Road-Sight/README.md).
+
+Offline tests pass. Built without BMW's SDK. Not car-tested; preview images use
+invented values.
