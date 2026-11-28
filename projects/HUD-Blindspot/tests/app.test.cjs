@@ -107,7 +107,7 @@ test('declared fields, event outputs, enum values and access modes match the loc
                 NO_WARNING_RIGHT: 0, WARNING_RIGHT: 1 }]]) {
             assert.deepEqual(schema.datatypes[warning.members.find(m => m.name === member).dataRef].items, expected);
         }
-        assert.equal(Object.keys(spec.signals).length, 3);
+        assert.equal(Object.keys(spec.signals).length, 7);
     });
 
 test('manifest has saved controls, background start and only the read adapter can call the diagnostic method', () => {
@@ -161,7 +161,7 @@ test('with D347 test mode chosen, the background uses the real D347 reader and r
     settings.set('enabled', false); assert.equal(model.model().warning.valid, false);
 });
 
-test('Auto holds the SOME/IP field value, never polls diagnostics, and D347 runs only in its test mode', async t => {
+test('Auto holds the SOME/IP field value without diagnostics, and reads the mirror status only when SOME/IP has no valid state', async t => {
     let implementation, timer, now = 0; const handlers = {}, calls = [], events = new EventEmitter();
     t.after(() => events.emit('shutdown'));
     const values = Object.fromEntries(spec.settings.map(s => [s.key, s.default])), listeners = [];
@@ -201,15 +201,24 @@ test('Auto holds the SOME/IP field value, never polls diagnostics, and D347 runs
     assert.equal(bg.model().warning.valid, true); assert.equal(bg.model().warning.left, 1);
     assert.equal(bg.model().someip.held, true); assert.equal(bg.model().someip.updates, 1);
     emit(0); timer(); assert.equal(bg.model().warning.left, 0); assert.equal(bg.model().warning.valid, true);
-    emit(0, 6); timer(); assert.equal(bg.model().warning.valid, false); assert.equal(calls.length, 0);
+    assert.equal(calls.length, 0, 'no diagnostic request while SOME/IP is valid');
+    // "SOME/IP only": a fault qualifier means no warning and still no diagnostics.
+    settings.set('source', 'someip'); emit(0, 6); timer(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(bg.model().warning.valid, false); assert.equal(calls.length, 0);
     assert.equal(bg.model().warning.source, 'SOME/IP'); assert.equal(bg.model().someip.sample.qualifier, 6);
     // The Assisted View event still expires.
     handlers[VIEW_EVENT]({ statusLaneChangeWarning: { qualifierLaneChangeWarning: 9,
         statusLaneChangeWarningLeft: 0, statusLaneChangeWarningRight: 2 } });
     assert.equal(bg.model().assisted.valid, true); now += 2001; assert.equal(bg.model().assisted.valid, false);
-    // Only the explicit test mode sends a diagnostic request.
-    settings.set('source', 'uds'); timer(); await new Promise(resolve => setImmediate(resolve));
-    assert.equal(calls.length, 1); assert.equal(bg.model().warning.source, 'UDS D347');
-    settings.set('source', 'auto'); now += 5000; timer(); await new Promise(resolve => setImmediate(resolve));
-    assert.equal(calls.length, 1); assert.equal(bg.model().warning.source, 'SOME/IP');
+    // Auto with no valid SOME/IP state: the mirror status read takes over and says why.
+    settings.set('source', 'auto'); timer(); await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.length, 1); assert.equal(calls[0].serviceID, 0x22); assert.deepEqual(Array.from(calls[0].udsData), [0xd3, 0x47]);
+    assert.equal(bg.model().warning.source, 'UDS D347'); assert.ok(bg.model().warning.fallbackReason);
+    // SOME/IP valid again: Auto goes back to it.
+    emit(1); timer();
+    assert.equal(bg.model().warning.source, 'SOME/IP'); assert.equal(bg.model().warning.left, 1);
+    // The check page has a line per subscription and a conclusion.
+    const lines = bg.check();
+    assert.equal(lines.length, 7); assert.match(lines[0], /^Blind-spot warning: RECEIVING/);
+    assert.match(lines[6], /arriving over SOME\/IP/);
 });

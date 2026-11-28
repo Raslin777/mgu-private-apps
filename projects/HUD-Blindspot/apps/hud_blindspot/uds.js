@@ -197,11 +197,18 @@ class MirrorReader {
         if (p && p.shutdown) Promise.resolve().then(() => p.shutdown()).catch(() => {});
     }
 }
-// Auto uses SOME/IP only. Diagnostics (D347) is used only when the owner
-// picks it explicitly: it is never an automatic fallback.
+// Auto uses SOME/IP when it delivers a valid warning state. When it does not
+// (on the owner's car no unit offers the service to the head unit), Auto uses
+// the body controller's mirror status read (D347). "SOME/IP only" never does.
+function useDiagnostics(mode, someip) {
+    return mode === 'uds' || (mode !== 'someip' && !(someip && someip.valid));
+}
 function selectSource(uds, someip, mode) {
     const signal = Object.assign({ source: 'SOME/IP', authoritative: false }, someip);
     if (mode === 'uds') return uds;
-    return Object.assign({}, signal, { reason: signal.reason || (signal.valid ? '' : 'No warning data') });
+    if (signal.valid || mode === 'someip') return Object.assign({}, signal, { reason: signal.reason || (signal.valid ? '' : 'No warning data') });
+    if (uds && uds.valid) return Object.assign({}, uds, { fallbackReason: signal.reason || 'No SOME/IP data' });
+    const why = signal.reason || 'No warning data';
+    return Object.assign({}, signal, { reason: uds && uds.reason ? why + ' | mirror read: ' + uds.reason : why });
 }
-module.exports = { MirrorReader, decodeD347, selectSource, IFACE, INSTANCE, POLL_MS, BACKOFF_MS, REPLY_MS, HARD_MS, CALL_MS };
+module.exports = { MirrorReader, decodeD347, selectSource, useDiagnostics, IFACE, INSTANCE, POLL_MS, BACKOFF_MS, REPLY_MS, HARD_MS, CALL_MS };

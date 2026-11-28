@@ -1,45 +1,313 @@
 {
-  "id": "hud_blindspot",
-  "title": "HUD Blindspot",
-  "description": "Small translucent left and right blind-spot warnings on the HUD. Supplemental, read-only, not car-tested.",
-  "version": "0.1.4",
-  "vendor": "Raslin777",
-  "loggingId": "HDBS",
-  "iconGlyph": "BS",
-  "autostart": true,
-  "screens": [{
-    "name": "MAIN", "kind": "canvas", "title": "HUD Blindspot",
-    "buttons": [["BTN_ENABLE", "Enable"], ["BTN_DISABLE", "Disable"], ["BTN_SIZE", "Size"], ["BTN_OPACITY", "Opacity"], ["BTN_HEIGHT", "Height"], ["BTN_POSITION", "Position"]]
-  }, {
-    "name": "POSITION", "kind": "list", "title": "Blindspot indicator position",
-    "items": [["button", "POS_TARGET", "Move: Both indicators"], ["button", "POS_LEFT", "Move left"], ["button", "POS_RIGHT", "Move right"], ["button", "POS_UP", "Move up"], ["button", "POS_DOWN", "Move down"], ["button", "POS_RESET", "Reset selected position"], ["button", "POS_BACK", "Back"]]
-  }],
-  "signals": {
-    "de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance": {
-      "_instances": "1",
-      "_optional": "Primary SOME/IP warning source",
-      "lateralCollisionAvoidanceQualifiers": "s",
-      "_broadcasts": ["requestWarningSteeringWheelExteriorMirror"]
-    },
-    "de.bmw.dass.driverassistanceapplications.AssistedDrivingViewLateralCollisionAvoidance": {
-      "_instances": "1",
-      "_optional": "Secondary read-only lane-change warning notifications",
-      "_broadcasts": ["assistedDrivingViewLcaInput"]
-    },
-    "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
-      "_instances": "SystemFunctionsInternalTasuInst1",
-      "_optional": "Only for the explicit D347 test mode; not used otherwise",
-      "_methods": ["sendTasuRequest"],
-      "_broadcasts": ["sendTasuResponse"]
-    }
+ "id": "hud_blindspot",
+ "title": "HUD Blindspot",
+ "description": "Small translucent left and right blind-spot warnings on the HUD. Supplemental, read-only, not car-tested.",
+ "version": "0.1.5",
+ "vendor": "Raslin777",
+ "loggingId": "HDBS",
+ "iconGlyph": "BS",
+ "autostart": true,
+ "screens": [
+  {
+   "name": "MAIN",
+   "kind": "canvas",
+   "title": "HUD Blindspot",
+   "buttons": [
+    [
+     "BTN_ENABLE",
+     "Enable"
+    ],
+    [
+     "BTN_DISABLE",
+     "Disable"
+    ],
+    [
+     "BTN_SIZE",
+     "Size"
+    ],
+    [
+     "BTN_OPACITY",
+     "Opacity"
+    ],
+    [
+     "BTN_HEIGHT",
+     "Height"
+    ],
+    [
+     "BTN_POSITION",
+     "Position"
+    ],
+    [
+     "BTN_CHECK",
+     "Check"
+    ]
+   ]
   },
-  "settings": [
-    {"key": "enabled", "label": "Enable HUD blind-spot indicators", "type": "bool", "default": false},
-    {"key": "source", "label": "Warning data source", "type": "choice", "default": "auto", "options": [["auto", "Auto: SOME/IP (no diagnostics)"], ["uds", "Test: D347 diagnostics only"], ["someip", "SOME/IP only"]]},
-    {"key": "size", "label": "Indicator size", "type": "choice", "default": "small", "options": [["small", "Small"], ["medium", "Medium"], ["large", "Large"]]},
-    {"key": "opacity", "label": "Indicator opacity", "type": "choice", "default": "65", "options": [["45", "45%"], ["65", "65%"], ["85", "85%"]]},
-    {"key": "height", "label": "Indicator height", "type": "choice", "default": "50", "options": [["40", "Higher"], ["50", "Middle"], ["60", "Lower"]]},
-    {"key": "positionTarget", "label": "Move which indicator", "type": "choice", "default": "both", "options": [["both", "Both indicators"], ["left", "Left indicator"], ["right", "Right indicator"]]},
-    {"key": "positions", "label": "Saved indicator offsets", "type": "object", "default": {"left": {"x": 0, "y": 0}, "right": {"x": 0, "y": 0}}, "hidden": true}
-  ]
+  {
+   "name": "POSITION",
+   "kind": "list",
+   "title": "Blindspot indicator position",
+   "items": [
+    [
+     "button",
+     "POS_TARGET",
+     "Move: Both indicators"
+    ],
+    [
+     "button",
+     "POS_LEFT",
+     "Move left"
+    ],
+    [
+     "button",
+     "POS_RIGHT",
+     "Move right"
+    ],
+    [
+     "button",
+     "POS_UP",
+     "Move up"
+    ],
+    [
+     "button",
+     "POS_DOWN",
+     "Move down"
+    ],
+    [
+     "button",
+     "POS_RESET",
+     "Reset selected position"
+    ],
+    [
+     "button",
+     "POS_BACK",
+     "Back"
+    ]
+   ]
+  },
+  {
+   "name": "CHECK",
+   "kind": "list",
+   "title": "Blindspot connection check",
+   "items": [
+    [
+     "button",
+     "CHK_0",
+     "Checking..."
+    ],
+    [
+     "button",
+     "CHK_1",
+     "Checking..."
+    ],
+    [
+     "button",
+     "CHK_2",
+     "Checking..."
+    ],
+    [
+     "button",
+     "CHK_3",
+     "Checking..."
+    ],
+    [
+     "button",
+     "CHK_4",
+     "Checking..."
+    ],
+    [
+     "button",
+     "CHK_5",
+     "Checking..."
+    ],
+    [
+     "button",
+     "CHK_6",
+     "Checking..."
+    ],
+    [
+     "button",
+     "CHK_BACK",
+     "Back"
+    ]
+   ]
+  }
+ ],
+ "signals": {
+  "de.bmw.dass.driverassistanceapplications.LateralCollisionAvoidance": {
+   "_instances": "1",
+   "_optional": "Primary SOME/IP warning source",
+   "lateralCollisionAvoidanceQualifiers": "s",
+   "_broadcasts": [
+    "requestWarningSteeringWheelExteriorMirror"
+   ]
+  },
+  "de.bmw.dass.driverassistanceapplications.AssistedDrivingViewLateralCollisionAvoidance": {
+   "_instances": "1",
+   "_optional": "Secondary read-only lane-change warning notifications",
+   "_broadcasts": [
+    "assistedDrivingViewLcaInput"
+   ]
+  },
+  "com.harman.infotainment.systemfunctions.tasu.tasu.InternalTasu": {
+   "_instances": "SystemFunctionsInternalTasuInst1",
+   "_optional": "Read-only D347 mirror status read (Auto fallback and its own mode)",
+   "_methods": [
+    "sendTasuRequest"
+   ],
+   "_broadcasts": [
+    "sendTasuResponse"
+   ]
+  },
+  "de.bmw.dass.GapVehicleAhead": {
+   "_instances": "1",
+   "_optional": "Read-only reachability check for the connection page",
+   "GapVehicleDrivingAhead": "s"
+  },
+  "de.bmw.dass.AssistedDrivingViewFunctionInput": {
+   "_instances": "1",
+   "_optional": "Read-only reachability check for the connection page",
+   "_broadcasts": [
+    "assistedDrivingViewFunctionInputIbVip"
+   ]
+  },
+  "de.bmw.dass.pad.communication.AssistedDrivingViewLateralFunctionInput": {
+   "_instances": "1",
+   "_optional": "Read-only reachability check for the connection page",
+   "_broadcasts": [
+    "lateralFunctionInputAssistedDrivingView"
+   ]
+  },
+  "de.bmw.dass.pad.communication.ObjectListSuAAR": {
+   "_instances": "1",
+   "_optional": "Read-only reachability check for the connection page",
+   "_broadcasts": [
+    "suAARObjectList"
+   ]
+  }
+ },
+ "settings": [
+  {
+   "key": "enabled",
+   "label": "Enable HUD blind-spot indicators",
+   "type": "bool",
+   "default": false
+  },
+  {
+   "key": "source",
+   "label": "Warning data source",
+   "type": "choice",
+   "default": "auto",
+   "options": [
+    [
+     "auto",
+     "Auto: SOME/IP, else mirror status read (D347)"
+    ],
+    [
+     "someip",
+     "SOME/IP only"
+    ],
+    [
+     "uds",
+     "Mirror status read (D347) only"
+    ]
+   ]
+  },
+  {
+   "key": "size",
+   "label": "Indicator size",
+   "type": "choice",
+   "default": "small",
+   "options": [
+    [
+     "small",
+     "Small"
+    ],
+    [
+     "medium",
+     "Medium"
+    ],
+    [
+     "large",
+     "Large"
+    ]
+   ]
+  },
+  {
+   "key": "opacity",
+   "label": "Indicator opacity",
+   "type": "choice",
+   "default": "65",
+   "options": [
+    [
+     "45",
+     "45%"
+    ],
+    [
+     "65",
+     "65%"
+    ],
+    [
+     "85",
+     "85%"
+    ]
+   ]
+  },
+  {
+   "key": "height",
+   "label": "Indicator height",
+   "type": "choice",
+   "default": "50",
+   "options": [
+    [
+     "40",
+     "Higher"
+    ],
+    [
+     "50",
+     "Middle"
+    ],
+    [
+     "60",
+     "Lower"
+    ]
+   ]
+  },
+  {
+   "key": "positionTarget",
+   "label": "Move which indicator",
+   "type": "choice",
+   "default": "both",
+   "options": [
+    [
+     "both",
+     "Both indicators"
+    ],
+    [
+     "left",
+     "Left indicator"
+    ],
+    [
+     "right",
+     "Right indicator"
+    ]
+   ]
+  },
+  {
+   "key": "positions",
+   "label": "Saved indicator offsets",
+   "type": "object",
+   "default": {
+    "left": {
+     "x": 0,
+     "y": 0
+    },
+    "right": {
+     "x": 0,
+     "y": 0
+    }
+   },
+   "hidden": true
+  }
+ ]
 }

@@ -12,7 +12,7 @@ Versions and download links were checked against GitHub Releases on **November 2
 | Better Lighting | 0.1.0 | Ambient colours, favourites, breathe/pulse/rainbow effects and driving-mode profiles. | [Guide and source](projects/BettetLighting/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14) |
 | Camera Cluster | 0.1.0 | Show the front or rear camera in the instrument cluster's centre map area. | [Guide and source](projects/Camera-Cluster/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14) |
 | External Lights | 0.2.9 | Exterior lamp effects, individual lamp tests and diagnostic-address comparisons. | [Guide and source](projects/external_lights/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.9) |
-| HUD Blindspot | 0.1.4 | Small translucent left/right blind-spot indicators on the HUD, with saved position controls. | [Guide and source](projects/HUD-Blindspot/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.4) |
+| HUD Blindspot | 0.1.5 | Small translucent left/right blind-spot indicators on the HUD, with saved position controls. | [Guide and source](projects/HUD-Blindspot/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.5) |
 | Road Sight (KAFAS viewer) | 0.1.0 | Inspect reported lanes, signs, traffic lights, objects and driver-assistance warnings. | [Guide and source](projects/Road-Sight/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/road-sight-v0.1.0) |
 
 These are the **published downloads**, not unreleased local builds. Look for
@@ -102,10 +102,13 @@ for the exact behavior and remaining limits.
 
 ### HUD Blindspot
 
-Version **0.1.4** uses **SOME/IP only in Auto mode**, trying the primary LCA
-warning feed and then Assisted Driving View. Auto does not fall back to
-UDS diagnostics. The primary warning is held while its provider is available;
-D347 remains an explicit diagnostic test mode.
+Version **0.1.5** follows a car result: 0.1.4 showed the SOME/IP provider as
+unavailable on the owner's car and never changed. **Auto** still prefers the
+SOME/IP warning feeds, and now falls back to the read-only BDC mirror status
+read (D347) when SOME/IP has no valid state. *SOME/IP only* never falls back.
+A new **Check** page shows, for each connection, whether it is receiving,
+offered but silent, not offered by any unit, refused, or missing its definition,
+with a plain conclusion. Not yet run on a car.
 
 The HUD contains only two small amber indicators: faint outlines while
 enabled, filled on an active warning. Size, opacity, height and independent

@@ -120,20 +120,29 @@ test('provider loss and disabling discard late replies; stale snapshots never re
     await flush(); f.reader.tick(true); f.reader.receive(raw(positive(2, 0))); assert.equal(f.reader.snapshot().left, 2);
     f.state.available(false); assert.equal(f.reader.snapshot().valid, false);
 });
-test('Auto never uses diagnostics; D347 is used only when chosen explicitly', () => {
+test('Auto prefers SOME/IP and falls back to the mirror status read only when SOME/IP gives nothing', () => {
+    const { useDiagnostics } = require('../apps/hud_blindspot/uds');
     const signal = { valid: true, active: true, left: 1, right: 0 };
     const uds = { source: 'UDS D347', authoritative: true, valid: true, active: true, left: 0, right: 1 };
     assert.equal(selectSource(uds, signal, 'auto').source, 'SOME/IP');
     assert.equal(selectSource(uds, signal, 'someip').source, 'SOME/IP');
-    const missing = selectSource(uds, { valid: false, reason: 'Warning signal unavailable' }, 'auto');
-    assert.equal(missing.source, 'SOME/IP'); assert.equal(missing.valid, false);
-    assert.equal(missing.reason, 'Warning signal unavailable'); assert.equal(missing.fallbackReason, undefined);
-    assert.equal(selectSource(uds, { valid: false }, 'auto').reason, 'No warning data');
-    const primaryFault = { valid: false, authoritative: true, active: false, left: 0, right: 0, reason: 'Blind-spot system unavailable' };
-    assert.equal(selectSource(uds, primaryFault, 'auto').valid, false);
-    assert.equal(selectSource(uds, primaryFault, 'uds').source, 'UDS D347');
+    // No SOME/IP provider (the owner's car): Auto shows the mirror read and says why.
+    const fallback = selectSource(uds, { valid: false, reason: 'Warning signal unavailable' }, 'auto');
+    assert.equal(fallback.source, 'UDS D347'); assert.equal(fallback.valid, true); assert.equal(fallback.right, 1);
+    assert.equal(fallback.fallbackReason, 'Warning signal unavailable');
+    // "SOME/IP only" never falls back.
+    const strict = selectSource(uds, { valid: false, reason: 'Warning signal unavailable' }, 'someip');
+    assert.equal(strict.source, 'SOME/IP'); assert.equal(strict.valid, false); assert.equal(strict.fallbackReason, undefined);
+    // Neither source has data: both reasons are shown.
     const absent = { source: 'UDS D347', valid: false, authoritative: false, reason: 'No answer' };
+    const none = selectSource(absent, { valid: false, reason: 'Warning signal unavailable' }, 'auto');
+    assert.equal(none.valid, false); assert.equal(none.source, 'SOME/IP');
+    assert.equal(none.reason, 'Warning signal unavailable | mirror read: No answer');
+    assert.equal(selectSource(absent, { valid: false }, 'someip').reason, 'No warning data');
     assert.equal(selectSource(absent, signal, 'uds').valid, false);
+    // When the diagnostic read is polled.
+    assert.equal(useDiagnostics('auto', signal), false); assert.equal(useDiagnostics('auto', { valid: false }), true);
+    assert.equal(useDiagnostics('someip', { valid: false }), false); assert.equal(useDiagnostics('uds', signal), true);
 });
 test('the app screen shows UDS TX, decoded RX and raw TASU bytes without putting them on the HUD', () => {
     const drawn = [];

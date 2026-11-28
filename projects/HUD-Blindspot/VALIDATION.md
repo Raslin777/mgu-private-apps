@@ -31,6 +31,22 @@ as an automatic fallback.
 
 Built and tested offline. No HU connection, live UDS request, vehicle coding or firmware modification was performed.
 
+## 0.1.5 (November 28, 2026)
+
+Car result for 0.1.4, reported by the owner: the page showed the SOME/IP
+provider as unavailable and nothing changed. No log was captured.
+
+0.1.5 offline checks: 40 tests (38 pass, 2 skipped because they need local BMW
+files), Node 8.16.2 runtime check, SDK-free package built
+(`dist/hud_blindspot@0.1.5.tgz`). New tests cover: Auto prefers SOME/IP and
+falls back to the mirror status read only when SOME/IP has no valid state;
+*SOME/IP only* never falls back; the diagnostic read is not polled while
+SOME/IP is valid; each check reports the stage it reached; the conclusion
+distinguishes the cases; a warning source records why it failed.
+
+Not verified: 0.1.5 has not run on the car. Whether the D347 read is answered on
+the car is still unconfirmed. Not released: the published release is 0.1.4.
+
 ## Source correction and evidence
 
 0.1.3 was checked directly against the owner-supplied `someip-interfaces (1).json`:

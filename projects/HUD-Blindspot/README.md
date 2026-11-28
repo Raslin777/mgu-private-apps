@@ -113,6 +113,35 @@ apps' BDC traffic is ignored: it neither answers nor cancels a read (0.1.4).
 All TASU traffic is shared; some negative replies cannot be uniquely
 attributed to a client. Avoid running other diagnostic apps at once.
 
+### 0.1.5: it showed "unavailable" on the car (November 28, 2026)
+
+On the owner's car 0.1.4 showed *Provider unavailable* and never changed: no
+unit offers either blind-spot service to the head unit. The car does show the
+assisted driving view in the cluster, so the data exists on the car; why the
+head unit cannot see it is not known from files. 0.1.5 does two things:
+
+- **Auto falls back to the mirror status read.** Auto still prefers SOME/IP.
+  When SOME/IP has no valid warning state, Auto uses the body controller's
+  read-only mirror status (D347) and says so on the page. *SOME/IP only* never
+  falls back. This reverses the 0.1.4 decision to keep diagnostics out of Auto,
+  because on this car SOME/IP delivers nothing.
+- **A Check page says where the connection stops.** The *Check* button lists,
+  for the two blind-spot subscriptions and four other read-only assistance
+  services, one of: *RECEIVING*, *offered by the car, nothing sent yet*, *NOT
+  OFFERED by any unit*, *refused*, or *head unit has no definition for it*.
+  The last line is the conclusion, and it is also shown at the bottom of the
+  main page. Before 0.1.5 all of these cases looked the same ("unavailable").
+
+What the Check page separates:
+
+| Lines show | Meaning |
+|---|---|
+| Gap to car ahead RECEIVING, assisted view lines NOT OFFERED | car data reaches the app, but the assistance computer's services are not offered to the head unit |
+| Assisted view lines offered or RECEIVING, blind-spot NOT OFFERED | the assistance computer is visible but does not offer the blind-spot service |
+| everything NOT OFFERED | no car service reaches this app (ignition off, or a wider problem) |
+| "no definition" | the head unit did not generate the interface at install: reinstall |
+| "refused" | the head unit blocked the subscription; the reason is in the app log |
+
 ### 0.1.4: SOME/IP only (November 22, 2026)
 
 The owner does not want the display to depend on diagnostics. From 0.1.4:

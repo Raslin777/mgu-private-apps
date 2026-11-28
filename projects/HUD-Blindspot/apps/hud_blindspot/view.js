@@ -45,6 +45,7 @@ function draw(cv, model) {
     if (st && st.sent) cv.text(('D347 reads: sent ' + st.sent + ', answered ' + st.answered + ', no answer ' + st.missed +
         ', refused ' + st.refused + ', late ' + st.late + ' | last reply ' + (st.lastMs == null ? '--' : st.lastMs + ' ms') +
         ', slowest ' + st.maxMs + ' ms' + (trace && trace.verdict ? ' | HU: ' + trace.verdict : '')).slice(0, 150), 800, 501, 17, '#a6b5c8');
-    cv.text('Supplemental display. Keep using the factory mirror warnings.', 44, 501, 18, '#97a6ba');
+    const conclusion = model.check && model.check[model.check.length - 1];
+    cv.text((conclusion ? 'Check: ' + conclusion : 'Supplemental display. Keep using the factory mirror warnings.').slice(0, 95), 44, 501, 18, '#97a6ba');
 }
 module.exports = { draw };

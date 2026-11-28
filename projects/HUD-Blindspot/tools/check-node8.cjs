@@ -44,7 +44,10 @@ async function readCheck() {
         } }, log, function () {});
     await reader.start(); reader.tick(false); assert.equal(calls, 0);
     reader.tick(true); assert.equal(reader.snapshot().left, 2);
-    assert.equal(selectSource(reader.snapshot(), { valid: false }, 'auto').source, 'SOME/IP');
+    assert.equal(selectSource(reader.snapshot(), { valid: false }, 'auto').source, 'UDS D347');
+    assert.equal(selectSource(reader.snapshot(), { valid: false }, 'someip').source, 'SOME/IP');
+    const probeModule = require(path.join(app, 'probe'));
+    assert.ok(/NOT OFFERED/.test(probeModule.describe('x', { stage: 'subscribed', offered: false, events: 0 })));
     assert.equal(selectSource(reader.snapshot(), { valid: false }, 'uds').source, 'UDS D347');
     assert.equal(decodeD347([0x62, 0xd3, 0x47, 0x0d, 0]).valid, false);
     await Promise.resolve(); reader.stop();

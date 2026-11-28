@@ -1,5 +1,6 @@
 'use strict';
 const { IFACE, FIELD, MIRROR_EVENT } = require('./warnings');
+const { stageOf } = require('./probe');
 class WarningSource {
     constructor(signals, state, log, change, options) {
         const opts = options || {};
@@ -7,6 +8,7 @@ class WarningSource {
         this.iface = opts.iface || IFACE; this.event = opts.event || FIELD;
         this.withMirror = opts.mirror !== false; this.update = opts.update || (raw => this.state.update(raw));
         this.p = null; this.stopped = false; this.last = ''; this.lastMirror = ''; this.generation = 0; this.providerAvailable = null;
+        this.stage = 'starting'; this.error = '';
     }
     async start() {
         const generation = ++this.generation;
@@ -24,6 +26,7 @@ class WarningSource {
                     qualifier: this.state.sample.qualifier, left: this.state.sample.left, right: this.state.sample.right });
                 if (key !== this.last) { this.last = key; this.log.info('blind-spot ' + this.iface + ': ' + key); }
             }), this.log);
+            this.stage = 'subscribed';
             // Failure to subscribe to the optional raw mirror event must not take
             // away the typed warning field. Raw values are shown on the HU only.
             if (this.withMirror) try { await this.signals.on(p, MIRROR_EVENT, live(raw => {
@@ -34,12 +37,15 @@ class WarningSource {
             }), this.log); }
             catch (e) { this.log.warn('raw mirror event unavailable: ' + e.message); }
         } catch (e) {
+            this.stage = stageOf(e); this.error = String(e && e.message || e).slice(0, 70);
             this.state.availability(false); this.change();
             this.log.warn('blind-spot subscription ' + this.iface + ': ' + String(e.message || e));
             if (p && p.shutdown) await Promise.resolve(p.shutdown()).catch(() => {});
             this.p = null;
         }
     }
+    // How far this subscription got: used by the check page.
+    status() { return { stage: this.stage, offered: this.providerAvailable, events: this.state.updates || 0, error: this.error }; }
     stop() {
         this.stopped = true; this.generation++;
         this.state.availability(false);
