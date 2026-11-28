@@ -1,121 +1,148 @@
-# Private MGU app source
+# Custom MGU apps
 
-## AWD Diagnostic
-ALPHA USE AT YOUR OWN RISK
-This will temporarily put your car into RWD mode until you turn off the car.
+Apps and supporting tools for BMW iDrive 7 (MGU), installed through **MGU Store**.
+Versions and download links were checked against GitHub Releases on **November 28, 2026**.
 
-An iDrive 7 app for the temporary AWD diagnostic on the 2020 750i xDrive (G12) with the IB_G05 and VIP_G05 ECU pair.
+## Apps
+
+| App | Published version | What it does | Source and setup | Download |
+|---|---|---|---|---|
+| AI Terminal | 0.3.0 | Ask Claude/OpenAI, create files and run approved commands; QR phone setup and chat. | [Guide](docs/AI_TERMINAL.md) · [Source](apps/mgu_ai_terminal) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/ai-terminal-v0.3.0) |
+| AWD Diagnostic | 0.1.0 | Read AWD status and run the temporary PAD diagnostic for the G12 750i xDrive. | [Procedure](#awd-diagnostic) · [Source](apps/awd_diag) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/awd-diag-v0.1.0) |
+| Better Lighting | 0.1.0 | Ambient colours, favourites, breathe/pulse/rainbow effects and driving-mode profiles. | [Guide and source](projects/BettetLighting/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14) |
+| Camera Cluster | 0.1.0 | Show the front or rear camera in the instrument cluster's centre map area. | [Guide and source](projects/Camera-Cluster/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14) |
+| External Lights | 0.2.9 | Exterior lamp effects, individual lamp tests and diagnostic-address comparisons. | [Guide and source](projects/external_lights/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.9) |
+| HUD Blindspot | 0.1.4 | Small translucent left/right blind-spot indicators on the HUD, with saved position controls. | [Guide and source](projects/HUD-Blindspot/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.4) |
+| Road Sight (KAFAS viewer) | 0.1.0 | Inspect reported lanes, signs, traffic lights, objects and driver-assistance warnings. | [Guide and source](projects/Road-Sight/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/road-sight-v0.1.0) |
+
+These are the **published downloads**, not unreleased local builds. Look for
+**Road Sight** in the Store when looking for the KAFAS app.
+
+## Supporting tools
+
+| Tool | Version | Used by | Source and setup | Download |
+|---|---|---|---|---|
+| AI Terminal root helper | 0.1.1 | Optional helper for approved root commands in AI Terminal. | [Guide](docs/AI_TERMINAL.md) · [Source](native/mgu-ai-root) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/ai-terminal-v0.3.0) |
+| Camera Cluster feed | 0.1.0 | Required camera-stream feed for Camera Cluster. | [Guide](projects/Camera-Cluster/README.md) · [Source](projects/Camera-Cluster/native/camera-cluster-feed) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14) |
+
+Camera Cluster also needs **Cluster renderer 0.5.3 or newer**. HUD Blindspot
+needs **Cluster renderer 0.6.7 or newer**. Install that separate dependency
+from the upstream [robertnisipeanu/idrive-apps](https://github.com/robertnisipeanu/idrive-apps) Store source.
+
+## Install through MGU Store
+
+1. Add **Raslin777/mgu-private-apps** as a GitHub source.
+2. Select **Releases**, then **Check now** or refresh the source.
+3. Choose the app by its name above and install its latest version. Install
+   the supporting tools and renderer listed for it as well.
+
+Use the release's catalog.json as an alternative catalog source where one
+is attached. AWD Diagnostic's release supplies its installable package directly.
+If an account token is needed, add it under **Settings → Accounts**, including
+through the Store's phone access page. A fine-grained GitHub token only needs
+repository **Contents: Read-only** access for installation.
+
+All current app packages target **iDrive 7**. Several are offline-tested
+prototypes; consult each project's validation and compatibility notes for
+its actual vehicle-testing status.
+
+## App notes
+
+### AI Terminal
+
+QR pairing opens a phone page for API-key setup, typing requests, reading
+output and stopping work. It uses your own Claude or OpenAI **API key**;
+ChatGPT/Claude account sign-in is not implemented. Command approval stays
+on the head-unit screen. The phone page uses HTTP on the car's Wi-Fi.
+
+The published AI Terminal package **includes the original root RSA key at
+the owner's explicit request**. The source keeps its null key placeholder.
+API credentials and helper tokens are configured separately.
+
+[Setup and build guide](docs/AI_TERMINAL.md) · [Review notes](REVIEW_NOTES.md) · [Validation](VALIDATION.md).
+
+### AWD Diagnostic
+
+**Alpha.** This temporarily puts the supported car into RWD diagnostic mode
+until the ignition is cycled. It targets the 2020 750i xDrive (G12) with the
+IB_G05 and VIP_G05 ECU pair.
 
 1. With the vehicle parked, enter PAD mode with the engine off.
-2. Open **AWD Diagnostic**. **Read AWD status** identifies the ECUs and reads the VIP status flag.
-3. Select **Arm PAD test**, then **Confirm PAD test**. The app rechecks ECU identity and AWD status and requires fresh zero-speed and zero-RPM readings before sending a single request over the head unit's diagnostic service.
-4. After the test, cycle the ignition and select **Read AWD status** to verify AWD is active again. The displayed state is the ECU's reported flag.
+2. Use **Read AWD status** to identify the ECUs and read the VIP status flag.
+3. Select **Arm PAD test**, then **Confirm PAD test**. The app rechecks identity
+   and status and requires fresh zero-speed and zero-RPM readings.
+4. Cycle the ignition afterwards and use **Read AWD status** to check the
+   ECU's reported AWD state again.
 
-The car's PAD mode is confirmed by the operator. The head-unit transport and actual vehicle behavior require a live check. The procedure is described in [BMW SIB 27 02 20](https://static.nhtsa.gov/odi/tsbs/2025/MC-11016472-0001.pdf).
+PAD mode is confirmed by the operator; actual vehicle behavior requires a
+live check. See [BMW SIB 27 02 20](https://static.nhtsa.gov/odi/tsbs/2025/MC-11016472-0001.pdf).
 
-Run `python build_awd.py` with Git and Node.js installed to build the SDK-free package into `dist/`. The Store supplies the SDK during installation.
+### Better Lighting
 
-## Store setup
+Ambient-light colours and effects, saved favourites and a look for each
+driving mode. See the [project guide](projects/BettetLighting/README.md)
+for its BDC driver, configuration and offline-test limits.
 
-Use this repository as a **Releases** source in MGU Store.
+### Camera Cluster
 
-1. In GitHub, create a fine-grained personal access token for this repository with repository **Contents: Read-only**.
-2. In the Store, add the token under **Settings → Accounts**. You can also use the Store's phone access page to enter it.
-3. Add `Raslin777/mgu-private-apps` as a GitHub source, select **Releases**, and choose **Check now**.
+Front, Rear and Off controls for the cluster's centre map area. Install the
+Camera Cluster feed tool and upstream Cluster renderer before using the app.
+Camera availability and the actual video path still need vehicle verification.
+See the [camera setup and evidence](projects/Camera-Cluster/README.md).
 
-To publish an app, attach its installable `<app-id>@<version>.tgz` or `<app-id>@<version>.mgu` to a published GitHub release. The Store skips draft and prerelease entries. The package's app ID and version must match its filename.
+### External Lights
 
-Keep API tokens, other SSH keys, and extracted BMW SDK or firmware files out of the repository and release assets. The AI Terminal release below intentionally bundles its root RSA key at the owner's explicit request.
+Version **0.2.9** includes corrected TASU session-request framing and displays
+outgoing request details and raw replies. A successful read does not establish
+that a lamp write will be accepted.
 
-See the [MGU Store publishing guide](https://github.com/cauliflowermossgrape/mgu-store/blob/main/docs/PUBLISHING.md) for package layout.
+This testing build has the app's Park/speed checks switched off; vehicle ECU
+conditions can still reject a request. See the [version history and test notes](projects/external_lights/README.md)
+for the exact behavior and remaining limits.
 
-## AI Terminal 0.3.0
+### HUD Blindspot
 
-An ID7 terminal for direct Claude/OpenAI API requests, workspace files and
-commands approved on the head-unit screen. Version 0.3.0 adds QR pairing and
-a phone page for API-key setup, typing requests, viewing output and stopping
-work. Command approval stays on the car screen.
+Version **0.1.4** uses **SOME/IP only in Auto mode**, trying the primary LCA
+warning feed and then Assisted Driving View. Auto does not fall back to
+UDS diagnostics. The primary warning is held while its provider is available;
+D347 remains an explicit diagnostic test mode.
 
-**Offline prototype; not car-tested. ID8 is not supported by this build.**
-QR pairing configures API keys; ChatGPT/Claude account sign-in is not implemented.
-The phone page uses HTTP on the car's Wi-Fi; hotspot access still needs car testing.
+The HUD contains only two small amber indicators: faint outlines while
+enabled, filled on an active warning. Size, opacity, height and independent
+left/right positions are saved. Data status and raw replies stay on the
+centre screen. Physical mirror-LED agreement and signal timing remain
+unverified. See [source and validation](projects/HUD-Blindspot/README.md).
 
-Install [AI Terminal 0.3.0](https://github.com/Raslin777/mgu-private-apps/releases/tag/ai-terminal-v0.3.0)
-through the Store's **Releases** source. The app archive **includes the original
-root RSA key at the owner's explicit request**. Source retains the null key
-placeholder. API credentials and helper tokens are configured separately.
-The optional root helper remains version 0.1.1.
+### Road Sight (KAFAS viewer)
 
-- [Phone setup, root access and build instructions](docs/AI_TERMINAL.md)
-- [Release and review notes](REVIEW_NOTES.md)
-- [Offline validation and remaining limits](VALIDATION.md)
+The published **0.1.0** viewer listens to **88 notifications across 29 services**.
+Its overview reports service availability, event counts, rates and ages;
+individual service pages list the latest reported values. It does not start
+by itself and does not write to the monitored car-side services.
 
-Run `npm test` for 57 offline tests. Both Node 8 compatibility checks pass,
-including phone pairing over real loopback HTTP. Build with
-`python tools/build.py --root-key <path-to-private-key>`, or `--no-root-key`.
-Build the optional helper with `python tools/package-root.py`.
+The release includes the app package, catalog and checksums. Live service
+availability remains unverified; preview images use invented values.
+See the [service list and setup](projects/Road-Sight/README.md).
 
-## Additional custom apps — November 14, 2026
+## Build and repository layout
 
-| App | Source and setup | Version |
-|---|---|---|
-| Better Lighting | [Ambient colours and effects](projects/BettetLighting/README.md) | 0.1.0 |
-| Camera Cluster | [Front/rear camera in the cluster](projects/Camera-Cluster/README.md) | 0.1.0 |
-| External Lights | [Exterior light shows and lamp tests](projects/external_lights/README.md) | 0.2.6 |
-| HUD Blindspot | [Small translucent left/right warnings on the windshield HUD](projects/HUD-Blindspot/README.md) | 0.1.4 |
-| Road Sight | [Read-only viewer of what the car sees: lanes, signs, lights, objects](projects/Road-Sight/README.md) | 0.1.0 |
+- [AWD Diagnostic](apps/awd_diag): build with python build_awd.py from the repository root.
+- [AI Terminal](apps/mgu_ai_terminal) and its [optional root helper](native/mgu-ai-root):
+  use the [build instructions](docs/AI_TERMINAL.md), including the existing
+  owner-requested RSA packaging option.
+- [Better Lighting](projects/BettetLighting), [Camera Cluster](projects/Camera-Cluster),
+  [External Lights](projects/external_lights), [HUD Blindspot](projects/HUD-Blindspot)
+  and [Road Sight](projects/Road-Sight): each has its own app, tests, documentation
+  and build tools. Run python tools/build.py from the chosen project folder,
+  following its README for prerequisites.
 
-[Download the reviewed packages](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14).
-Refresh this repository's **Releases** source in MGU Store. Camera Cluster
-requires its feed tool and upstream `cluster-render >= 0.5.3`.
-All three are offline prototypes, not verified on a car.
+The emulator is excluded. API credentials and extracted BMW SDK, firmware
+and schema files are not release inputs to commit. The AI Terminal RSA
+inclusion described above is intentional.
 
-Each project keeps its own package.json, tests, native tools and builder under
-projects/ to avoid conflicting filenames. For example, run
-`python projects/BettetLighting/tools/build.py` to build Better Lighting;
-run `npm test` from the corresponding project directory.
+To publish an installable app, attach its matching app-id@version.tgz or
+.mgu package to a **published** GitHub release. MGU Store skips drafts and
+prereleases. Include the corresponding catalog/checksums when available.
 
-[Review findings and validation](docs/CUSTOM_APPS_REVIEW_2026-11-14.md).
-AI Terminal and AWD Diagnostic remain available. The emulator is excluded.
-
-External Lights [0.2.6 update](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.6) adds the documented powertrain Park signal and displays raw selector values and sample ages. Park/speed safeguards remain enforced.
-
-## HUD Blindspot 0.1.4
-
-An ID7 prototype with small amber left/right blind-spot warning graphics on
-the windshield HUD, transparent backgrounds, adjustable opacity/size/height,
-and saved Enable/Disable controls. Position buttons move either side or both
-left/right/up/down and reset the selected offsets. Faint outlines stay visible
-while enabled and fill on an active warning. Runs in the background after enablement;
-disabled on first install. Auto uses SOME/IP warnings only (primary LCA, then
-Assisted Driving View lane-change warnings) and never falls back to
-diagnostics. The primary lane-change warning is held while its provider is
-available instead of expiring after 2 s. The read-only BDC D347 mirror-status
-read is now an explicit test mode with longer waits and stricter reply
-matching. The app page shows providers, decoded states, sample ages and raw
-replies; no diagnostic session or actuator control is implemented.
-
-Install [HUD Blindspot 0.1.4](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.4)
-from this repository's Releases source. Also add `robertnisipeanu/idrive-apps`
-and install Cluster renderer 0.6.7 or newer. The release includes a Store catalog
-declaring the dependency. [Source, setup and signal limits](projects/HUD-Blindspot/README.md).
-
-36 offline tests (34 pass, 2 skipped) and the Node 8 check pass. Not car-tested; exact physical mirror
-LED parity and signal timing are unverified. Supplemental information only:
-the factory warnings remain the reference. No BMW SDK, firmware, keys or
-emulator are included in this app.
-
-## Road Sight 0.1.0
-
-An ID7 app that lists everything the car reports about what it sees: lane
-markings, traffic signs, traffic lights, objects around the car, and the
-warnings built on them. It subscribes to 88 notifications across 29 services,
-with an overview page and one page per service showing every value received.
-It only listens: car-side services are declared as notifications only, and a
-test fails the build if that changes. It does not start by itself.
-
-Install [Road Sight 0.1.0](https://github.com/Raslin777/mgu-private-apps/releases/tag/road-sight-v0.1.0)
-from this repository's Releases source. [Source, services and limits](projects/Road-Sight/README.md).
-
-Offline tests pass. Built without BMW's SDK. Not car-tested; preview images use
-invented values.
+[Custom-app review notes](docs/CUSTOM_APPS_REVIEW_2026-11-14.md) ·
+[All releases](https://github.com/Raslin777/mgu-private-apps/releases).
