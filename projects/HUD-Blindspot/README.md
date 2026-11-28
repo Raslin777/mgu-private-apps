@@ -1,4 +1,4 @@
-# HUD Blindspot 0.1.3
+# HUD Blindspot 0.1.6
 
 A faint amber outline on each side of the **windshield HUD**, filling when the
 car reports a blind-spot/lane-change warning on that side. The default icons
@@ -23,7 +23,7 @@ factory mirror warnings or checking before changing lanes.
    instructions. This app uses the existing renderer; it does not install a
    second RAMSES participant or patch firmware.
 2. Add `Raslin777/mgu-private-apps` as a **Releases** source, refresh, and
-   install **HUD Blindspot 0.1.4**. Alternatively use the release's `catalog.json`.
+   install **HUD Blindspot 0.1.6**. Alternatively use the release's `catalog.json`.
    The catalog and package declare the renderer dependency.
 3. Open **HUD Blindspot**, then press **Enable**. It is disabled on first
    install. **Disable** removes this app's HUD layers and closes its renderer
@@ -95,7 +95,8 @@ status results. Diag.sqlite corroborates the `STATUS_LESEN` job and argument.
 This avoids depending entirely on the LCA SOME/IP service being present.
 
 The only diagnostic request the app can send is **`22 D3 47`**, source F2 to
-BDC 40. A positive reply must be exactly `62 D3 47 LL RR`. Values 00 = off,
+BDC 40. A positive reply is `62 D3 47 LL RR` (anything after the two status
+bytes is ignored, 0.1.6). Values 00 = off,
 01 = steady on, 02/03/04 = blinking levels, 0D = display fault, FF = invalid.
 The latter two are never treated as active warnings. The three blinking
 levels are shown with this app's 2 Hz animation; exact OEM flash timing has
@@ -106,12 +107,44 @@ Reads run only while enabled and D347 is selected or needed as the fallback: one
 at least 250 ms after the previous response (at most four reads per second),
 waiting up to 4 s for the reply once the head unit has accepted the request
 and 10 s overall (0.1.4; it was 1.5 s in total before, see below). Errors back
-off for 2 s. Unsupported/range/access-denied/session refusals stop further
-reads until Disable/Enable or a source change. The app does not change
+off for 2 s. Three unsupported/range/access-denied/session refusals in a row
+pause the reads for 30 s, then they are tried again (0.1.6; before, one refusal
+stopped them until Disable/Enable). The app does not change
 sessions, unlock access, test other addresses, or activate mirror LEDs. Other
 apps' BDC traffic is ignored: it neither answers nor cancels a read (0.1.4).
 All TASU traffic is shared; some negative replies cannot be uniquely
-attributed to a client. Avoid running other diagnostic apps at once.
+attributed to a client. 0.1.6 tolerates that (see below), but other apps that
+use diagnostics heavily at the same time can still slow the reads.
+
+### 0.1.6: a sturdier mirror status read (November 28, 2026)
+
+The mirror status read (D347) is what Auto uses on the owner's car, so the
+reader was reviewed against the app kit's diagnostic transport (which gets BDC
+replies on this car), a second public tool that reads D347 on a G05, and the
+BDC's own handler. The request and the reply format were right. Four weak
+points in how it shares the diagnostic channel were fixed:
+
+- **Reply length.** A reply was used only if it was exactly 5 bytes. Now the
+  two status bytes are read and anything after them is ignored.
+- **Refusals.** One "not supported / not allowed" reply stopped the reads until
+  Disable/Enable, and such a reply does not say which identifier it refuses, so
+  it could belong to another app's read. Now it takes three in a row to pause
+  the reads, the pause ends after 30 s, and any D347 answer clears it. The page
+  says "reads paused 30 s" while it lasts.
+- **Transport rejects and errors.** Every app receives these, and they do not
+  say whose request they are for. They used to end the read. Now they are noted
+  in the trace and the read keeps waiting for its answer, as the kit transport
+  does. If no answer comes, the timeout text names what was seen.
+- **Value lifetime.** A value counted for 2 s and any error dropped it at once,
+  while one read may take up to 4 s. A value now counts for 3 s and survives one
+  refused or lost read; after that the indicators go back to unavailable.
+
+Also: the counter line on the main page now counts a negative reply from the
+BDC under *refused*, not *answered*.
+
+Not changed: the request bytes, the poll interval, and how Auto chooses its
+source. **Still not run on the car**: whether the BDC answers D347 through the
+head unit on this car is unconfirmed.
 
 ### 0.1.5: it showed "unavailable" on the car (November 28, 2026)
 

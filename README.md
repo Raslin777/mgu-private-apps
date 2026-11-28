@@ -12,7 +12,7 @@ Versions and download links were checked against GitHub Releases on **November 2
 | Better Lighting | 0.1.0 | Ambient colours, favourites, breathe/pulse/rainbow effects and driving-mode profiles. | [Guide and source](projects/BettetLighting/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14) |
 | Camera Cluster | 0.1.0 | Show the front or rear camera in the instrument cluster's centre map area. | [Guide and source](projects/Camera-Cluster/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/custom-apps-2026-11-14) |
 | External Lights | 0.2.9 | Exterior lamp effects, individual lamp tests and diagnostic-address comparisons. | [Guide and source](projects/external_lights/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/external-lights-v0.2.9) |
-| HUD Blindspot | 0.1.5 | Small translucent left/right blind-spot indicators on the HUD, with saved position controls. | [Guide and source](projects/HUD-Blindspot/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.5) |
+| HUD Blindspot | 0.1.6 | Small translucent left/right blind-spot indicators on the HUD, with saved position controls. | [Guide and source](projects/HUD-Blindspot/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/hud-blindspot-v0.1.6) |
 | Road Sight (KAFAS viewer) | 0.1.0 | Inspect reported lanes, signs, traffic lights, objects and driver-assistance warnings. | [Guide and source](projects/Road-Sight/README.md) | [Release](https://github.com/Raslin777/mgu-private-apps/releases/tag/road-sight-v0.1.0) |
 
 These are the **published downloads**, not unreleased local builds. Look for
@@ -102,7 +102,12 @@ for the exact behavior and remaining limits.
 
 ### HUD Blindspot
 
-Version **0.1.5** follows a car result: 0.1.4 showed the SOME/IP provider as
+Version **0.1.6** makes the mirror status read (D347) sturdier on a diagnostic
+channel it shares with other apps: a reply with extra bytes is used, one
+refusal no longer stops the reads, another app's transport errors no longer
+end a read, and a value survives one lost read.
+
+Version 0.1.5 followed a car result: 0.1.4 showed the SOME/IP provider as
 unavailable on the owner's car and never changed. **Auto** still prefers the
 SOME/IP warning feeds, and now falls back to the read-only BDC mirror status
 read (D347) when SOME/IP has no valid state. *SOME/IP only* never falls back.

@@ -1,3 +1,26 @@
+# HUD Blindspot 0.1.6 validation — November 28, 2026
+
+0.1.6 changes only how the D347 mirror status reader copes with a shared
+diagnostic channel (README, "0.1.6"). The request bytes are unchanged. Built
+and tested offline; **nothing was run on the car**, so whether the BDC answers
+D347 through the head unit on this car is still not verified.
+
+- 45 tests, 43 pass, 2 skipped (the two that need local BMW files). Node 8.16.2
+  check passes. `dist/hud_blindspot@0.1.6.tgz` builds SDK-free.
+- New or changed tests: a reply with bytes after the two status bytes is used;
+  one refusal does not stop the reads, three in a row pause them for 30 s, a
+  good answer resets the count, and a D347 answer seen during a pause ends it;
+  busy and conditions-not-correct replies never pause the reads; Disable/Enable
+  clears a pause; a transport reject or error event during a read does not end
+  it and the answer that follows is used; with no answer the read times out and
+  the trace names the reject; a good value survives one refused or lost read and
+  is invalid when 3 s old.
+- A D347 value now counts for 3 s (it was 2 s). The SOME/IP event source still
+  expires after 2 s.
+
+On the car, the main page's counter line (sent / answered / no answer / refused
+/ late, last reply time) and the last raw reply show what the reader got.
+
 # HUD Blindspot 0.1.4 validation — November 22, 2026
 
 0.1.4 changes only the D347 reader's waiting and reply matching (README,
@@ -45,7 +68,7 @@ SOME/IP is valid; each check reports the stage it reached; the conclusion
 distinguishes the cases; a warning source records why it failed.
 
 Not verified: 0.1.5 has not run on the car. Whether the D347 read is answered on
-the car is still unconfirmed. Not released: the published release is 0.1.4.
+the car is still unconfirmed. Released November 28, 2026 (`hud-blindspot-v0.1.5`).
 
 ## Source correction and evidence
 

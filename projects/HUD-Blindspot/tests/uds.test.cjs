@@ -1,7 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { MirrorReader, decodeD347, selectSource, POLL_MS, BACKOFF_MS, IFACE, INSTANCE } = require('../apps/hud_blindspot/uds');
+const { MirrorReader, decodeD347, selectSource, POLL_MS, BACKOFF_MS, IFACE, INSTANCE,
+    SAMPLE_MS, REFUSALS_TO_BLOCK, BLOCK_RETRY_MS } = require('../apps/hud_blindspot/uds');
 const { draw } = require('../apps/hud_blindspot/view');
 const quiet = { info() {}, warn() {} };
 const positive = (left, right) => [0x62, 0xd3, 0x47, left, right];
@@ -29,8 +30,17 @@ test('D347 decoder distinguishes all four active states from display faults and 
     for (const bad of [5, 13, 15, 255]) {
         const d = decodeD347(positive(bad, 1)); assert.equal(d.valid, false); assert.equal(d.left, 0); assert.equal(d.right, 0);
     }
-    for (const reply of [null, [], [0x7f, 0x22, 0x22], [0x62, 0xd3, 0x47, 1], [...positive(1, 1), 0], [0x62, 0xd5, 0x42, 1, 1]])
+    for (const reply of [null, [], [0x7f, 0x22, 0x22], [0x62, 0xd3, 0x47, 1], [0x62, 0xd5, 0x42, 1, 1]])
         assert.equal(decodeD347(reply).valid, false);
+    // Bytes after the two status bytes are ignored, not a reason to drop the answer.
+    const long = decodeD347([...positive(1, 4), 0, 0xaa]);
+    assert.equal(long.valid, true); assert.equal(long.left, 1); assert.equal(long.right, 2);
+});
+test('an answer with bytes appended by the transport is used', async t => {
+    const f = await fixture(); t.after(() => f.reader.stop());
+    f.reader.tick(true); f.reader.receive(raw([...positive(0, 1), 0, 0]));
+    assert.equal(f.reader.snapshot().valid, true); assert.equal(f.reader.snapshot().right, 1);
+    assert.equal(f.reader.stats.answered, 1);
 });
 test('the reader sends only fixed F2 -> BDC 40 / 22 D347 and never overlaps or polls faster than 250 ms', async t => {
     const f = await fixture(); t.after(() => f.reader.stop());
@@ -80,21 +90,82 @@ test('an answer that arrives after its read was given up on is used and counted 
     assert.equal(f.reader.trace.origin, 'ecu (late)');
     f.reader.receive(raw([0x7f, 0x22, 0x31])); assert.equal(f.reader.blocked, false, 'a stray negative reply with no read waiting changes nothing');
 });
-test('negative UDS and outer TASU errors stay distinct; unsupported/access-denied reads latch until re-enabled', async t => {
-    for (const code of [0x11, 0x31, 0x33]) {
-        const f = await fixture(); t.after(() => f.reader.stop()); f.reader.tick(true);
-        f.reader.receive(raw([0x7f, 0x22, code])); await flush();
-        assert.equal(f.reader.snapshot().valid, false); assert.equal(f.reader.blocked, true);
-        assert.equal(f.reader.trace.origin, 'ecu'); assert.match(f.reader.trace.rx, /^7F 22/);
-        f.state.now = 99999; f.reader.tick(true); assert.equal(f.state.calls.length, 1);
-        f.reader.tick(false); f.reader.tick(true); assert.equal(f.state.calls.length, 2);
-    }
-    const f = await fixture(); t.after(() => f.reader.stop()); f.reader.tick(true);
-    f.reader.receive({ errorCode: 'NO_ERROR', udsResponse: Buffer.from([0xf0, 0xf2, 0x7f, 0, 0x22]) });
-    assert.equal(f.reader.trace.origin, 'tasu'); assert.equal(f.reader.trace.rx, '');
-    assert.match(f.reader.reason, /TASU rejected/); assert.equal(f.reader.snapshot().valid, false);
+test('one refusal does not stop the reads; three in a row pause them, and they are tried again later', async t => {
+    const f = await fixture(); t.after(() => f.reader.stop());
+    // flush(): the request call settles before the next read can go out.
+    const refuse = async code => { f.reader.tick(true); f.reader.receive(raw([0x7f, 0x22, code])); await flush(); };
+    await refuse(0x31);
+    assert.equal(f.reader.blocked, false); assert.equal(f.reader.refusals, 1);
+    assert.equal(f.reader.trace.origin, 'ecu'); assert.equal(f.reader.trace.rx, '7F 22 31');
+    assert.equal(f.reader.stats.refused, 1); assert.equal(f.reader.stats.answered, 0);
+    f.state.now += BACKOFF_MS - 1; f.reader.tick(true); assert.equal(f.state.calls.length, 1);
+    f.state.now += 1; await refuse(0x31); assert.equal(f.state.calls.length, 2); assert.equal(f.reader.blocked, false);
+    // A good answer in between starts the count again.
+    f.state.now += BACKOFF_MS; f.reader.tick(true); f.reader.receive(raw(positive(0, 0))); await flush();
+    assert.equal(f.reader.refusals, 0);
+    for (const code of [0x11, 0x33, 0x31]) { f.state.now += BACKOFF_MS; await refuse(code); }
+    assert.equal(f.reader.refusals, REFUSALS_TO_BLOCK); assert.equal(f.reader.blocked, true);
+    assert.match(f.reader.reason, /NRC 31\); reads paused 30 s/);
+    const calls = f.state.calls.length;
+    f.state.now += BLOCK_RETRY_MS - 1; f.reader.tick(true); assert.equal(f.state.calls.length, calls);
+    f.state.now += 1; f.reader.tick(true); assert.equal(f.state.calls.length, calls + 1); assert.equal(f.reader.blocked, false);
+    // Still refused: one more is enough to pause again.
+    f.reader.receive(raw([0x7f, 0x22, 0x31])); assert.equal(f.reader.blocked, true);
+    // A D347 answer seen while paused shows the BDC does answer: the pause ends.
+    f.reader.receive(raw(positive(1, 1)));
+    assert.equal(f.reader.blocked, false); assert.equal(f.reader.refusals, 0); assert.equal(f.reader.snapshot().valid, true);
 });
-test('timeouts and pending replies clear active fills and retain received bytes with a hard deadline', async t => {
+test('busy and conditions-not-correct replies never pause the reads; switching off and on clears a pause', async t => {
+    const f = await fixture(); t.after(() => f.reader.stop());
+    for (const code of [0x21, 0x22, 0x22, 0x21, 0x13]) {
+        f.reader.tick(true); f.reader.receive(raw([0x7f, 0x22, code])); await flush(); f.state.now += BACKOFF_MS;
+    }
+    assert.equal(f.reader.blocked, false); assert.equal(f.reader.refusals, 0); assert.equal(f.state.calls.length, 5);
+    for (let i = 0; i < REFUSALS_TO_BLOCK; i++) { f.reader.tick(true); f.reader.receive(raw([0x7f, 0x22, 0x31])); await flush(); f.state.now += BACKOFF_MS; }
+    assert.equal(f.reader.blocked, true); const calls = f.state.calls.length;
+    f.reader.tick(true); assert.equal(f.state.calls.length, calls);
+    f.reader.tick(false); f.reader.tick(true);
+    assert.equal(f.reader.blocked, false); assert.equal(f.reader.refusals, 0); assert.equal(f.state.calls.length, calls + 1);
+});
+test('a transport reject or error event during a read does not end it; the D347 answer that follows is used', async t => {
+    const f = await fixture(); t.after(() => f.reader.stop());
+    f.reader.tick(true);
+    // Every app receives these, and they do not say whose request they are for.
+    f.reader.receive({ errorCode: 'NO_ERROR', udsResponse: Buffer.from([0xf0, 0xf2, 0x7f, 0, 0x22]) });
+    assert.ok(f.reader.active); assert.equal(f.reader.active.exchange.transport, 'reject, code 22');
+    f.reader.receive({ errorCode: 'RESPONSE_TIMEOUT', udsResponse: Buffer.alloc(0) });
+    assert.ok(f.reader.active); assert.equal(f.state.calls.length, 1); assert.equal(f.reader.stats.refused, 0);
+    f.reader.receive(raw(positive(2, 0)));
+    assert.equal(f.reader.active, null); assert.equal(f.reader.snapshot().valid, true); assert.equal(f.reader.snapshot().left, 2);
+    assert.equal(f.reader.trace.origin, 'ecu'); assert.equal(f.reader.trace.transport, 'error RESPONSE_TIMEOUT');
+    assert.equal(f.reader.stats.answered, 1);
+});
+test('with no answer after a transport reject the read times out and the trace names the reject', async t => {
+    const f = await fixture({ deadlineMs: 10 }); t.after(() => f.reader.stop());
+    f.reader.tick(true); await flush();
+    f.reader.receive({ errorCode: 'NO_ERROR', udsResponse: Buffer.from([0xf0, 0xf2, 0x7f, 0, 0x22]) });
+    await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(f.reader.active, null); assert.equal(f.reader.trace.origin, 'timeout'); assert.equal(f.reader.trace.rx, '');
+    assert.equal(f.reader.trace.error, 'No D347 answer in 10 ms (transport reject, code 22)');
+    assert.equal(f.reader.trace.rawTasu, 'F0 F2 7F 00 22'); assert.equal(f.reader.stats.missed, 1);
+    assert.equal(f.reader.snapshot().reason, f.reader.trace.error);
+});
+test('a good value survives one refused or lost read and expires when it is 3 s old', async t => {
+    const f = await fixture(); t.after(() => f.reader.stop());
+    f.reader.tick(true); f.reader.receive(raw(positive(1, 0))); await flush();               // value read at 0 ms
+    f.state.now = POLL_MS; f.reader.tick(true); f.reader.receive(raw([0x7f, 0x22, 0x22]));   // next read refused
+    let s = f.reader.snapshot();
+    assert.equal(s.valid, true); assert.equal(s.left, 1); assert.equal(s.reason, '');
+    f.state.now = SAMPLE_MS; assert.equal(f.reader.snapshot().valid, true);
+    f.state.now = SAMPLE_MS + 1; s = f.reader.snapshot();
+    assert.equal(s.valid, false); assert.equal(s.left, 0); assert.equal(s.reason, 'Conditions not correct (NRC 22)');
+    const g = await fixture({ deadlineMs: 10 }); t.after(() => g.reader.stop());
+    g.reader.tick(true); g.reader.receive(raw(positive(0, 4))); await flush();
+    g.state.now = POLL_MS; g.reader.tick(true); await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(g.reader.stats.missed, 1); assert.equal(g.reader.snapshot().valid, true); assert.equal(g.reader.snapshot().right, 2);
+    g.state.now = SAMPLE_MS + 1; assert.equal(g.reader.snapshot().valid, false);
+});
+test('a pending reply extends the wait to a hard deadline, and its bytes are kept', async t => {
     const f = await fixture({ deadlineMs: 10 }); t.after(() => f.reader.stop());
     f.reader.tick(true); f.reader.receive(raw([0x7f, 0x22, 0x78]));
     await new Promise(resolve => setTimeout(resolve, 25));
@@ -114,7 +185,9 @@ test('a stalled method cannot overlap a later read; late rejection and shutdown 
 });
 test('provider loss and disabling discard late replies; stale snapshots never remain valid', async t => {
     const f = await fixture(); t.after(() => f.reader.stop()); f.reader.tick(true);
-    f.reader.receive(raw(positive(1, 1))); f.state.now = 2001; assert.equal(f.reader.snapshot().valid, false);
+    f.reader.receive(raw(positive(1, 1)));
+    f.state.now = SAMPLE_MS; assert.equal(f.reader.snapshot().valid, true);
+    f.state.now = SAMPLE_MS + 1; assert.equal(f.reader.snapshot().valid, false); assert.match(f.reader.snapshot().reason, /stale/);
     f.state.available(false); assert.equal(f.reader.sample, null); f.state.available(true);
     f.reader.tick(false); f.reader.receive(raw(positive(1, 1))); assert.equal(f.reader.snapshot().valid, false);
     await flush(); f.reader.tick(true); f.reader.receive(raw(positive(2, 0))); assert.equal(f.reader.snapshot().left, 2);

@@ -2,7 +2,7 @@
  "id": "hud_blindspot",
  "title": "HUD Blindspot",
  "description": "Small translucent left and right blind-spot warnings on the HUD. Supplemental, read-only, not car-tested.",
- "version": "0.1.5",
+ "version": "0.1.6",
  "vendor": "Raslin777",
  "loggingId": "HDBS",
  "iconGlyph": "BS",
